@@ -3,10 +3,12 @@
 import SwiftUI
 
 struct DailyPage: Page {
-    var id: UUID = UUID()
+    @EnvironmentObject var navigationState: NavigationState
     var navigationManager: NavigationManager?
-    var widgets: [any Widget] = []
-    var gestures: [AnyGesture<()>] = []
+
+    var widgets: [AnyWidget] {
+        return []
+    }
 
     let date: Date
 
@@ -25,6 +27,8 @@ struct DailyPage: Page {
                     navigationManager?.navigateBack()
                 }
             }
+            .padding()
         )
     }
 }
+

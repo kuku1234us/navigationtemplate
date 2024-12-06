@@ -3,10 +3,12 @@
 import SwiftUI
 
 struct HomePage: Page {
-    var id: UUID = UUID()
+    @EnvironmentObject var navigationState: NavigationState
     var navigationManager: NavigationManager?
-    var widgets: [any Widget] = []
-    var gestures: [AnyGesture<()>] = []
+
+    var widgets: [AnyWidget] {
+        return []
+    }
 
     init(navigationManager: NavigationManager?) {
         self.navigationManager = navigationManager
@@ -18,14 +20,22 @@ struct HomePage: Page {
                 Text("Home Page")
                     .font(.largeTitle)
                 Button("Go to Book Page") {
-                    let bookPage = BookPage(title: "Sample Book", author: "John Doe", navigationManager: navigationManager)
+                    let bookPage = BookPage(
+                        navigationManager: navigationManager,
+                        title: "Sample Book",
+                        author: "John Doe"
+                    )
                     navigationManager?.navigate(to: AnyPage(bookPage))
                 }
                 Button("Go to Daily Page") {
-                    let dailyPage = DailyPage(date: Date(), navigationManager: navigationManager)
+                    let dailyPage = DailyPage(
+                        date: Date(),
+                        navigationManager: navigationManager
+                    )
                     navigationManager?.navigate(to: AnyPage(dailyPage))
                 }
             }
+            .padding()
         )
     }
 }

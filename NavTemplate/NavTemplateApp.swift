@@ -9,9 +9,16 @@ import SwiftUI
 
 @main
 struct NavTemplateApp: App {
+    @StateObject var navigationManager = NavigationManager()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationStack(path: $navigationManager.navigationPath) {
+                AnyPage(HomePage(navigationManager: navigationManager))
+                    .navigationDestination(for: AnyPage.self) { page in
+                        page
+                    }
+            }
         }
     }
 }

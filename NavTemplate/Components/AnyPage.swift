@@ -3,11 +3,10 @@
 import SwiftUI
 
 struct AnyPage: Identifiable, View, Hashable {
-    let id: UUID
+    let id = UUID()
     private let _view: AnyView
 
     init<P: Page>(_ page: P) {
-        self.id = page.id
         self._view = AnyView(page)
     }
 

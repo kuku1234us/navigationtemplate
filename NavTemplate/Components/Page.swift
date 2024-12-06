@@ -3,79 +3,47 @@
 import SwiftUI
 
 protocol Page: View {
-    var id: UUID { get }
-    var widgets: [any Widget] { get set }
     var navigationManager: NavigationManager? { get set }
-
+    var widgets: [AnyWidget] { get }
+    var viewModel: PageViewModel { get }
+    
     @ViewBuilder func makeMainContent() -> AnyView
 }
 
 extension Page {
-    var id: UUID { UUID() }
-
-    var hasActiveWidget: Bool {
-        widgets.contains { $0.isActive }
-    }
-
+    var viewModel: PageViewModel { PageViewModel.shared }
+    
     var body: some View {
         ZStack {
             makeMainContent()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .edgesIgnoringSafeArea(.all)
-                .gesture(combinedGesture())
             
-            if hasActiveWidget {
-                Color.black.opacity(0.01)
-                    .frame(height: 44)
-                    .frame(maxWidth: .infinity)
-                    .edgesIgnoringSafeArea(.top)
-                    .zIndex(500)
-            }
-            
-            ForEach(widgets.indices, id: \.self) { index in
-                if let widget = widgets[index] as? BaseWidget {
-                    WidgetView(widget: widget)
-                        .zIndex(999)
-                }
+            ForEach(widgets) { widget in
+                widget
             }
         }
-        .navigationBarHidden(hasActiveWidget)
+        .background(ColorUtilities.fromHex("#5f2215"))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .gesture(widgetGestures())
+        .navigationBarBackButtonHidden(viewModel.isBackButtonHidden)
     }
-
-    private func combinedGesture() -> AnyGesture<()> {
-        func debugGestures() {
-            print("Processing gestures:")
-            widgets.forEach { widget in
-                print("- Widget type: \(type(of: widget)), has gesture: \(widget.gesture != nil)")
-            }
+    
+    private func widgetGestures() -> AnyGesture<Void> {
+        // Safely unwrap and handle gestures
+        let validGestures = widgets.compactMap { $0.gestureWrapper }
+        
+        guard !validGestures.isEmpty else {
+            return AnyGesture(DragGesture().map { _ in })
         }
         
-        debugGestures()
-        
-        let gestures = widgets.compactMap { $0.gesture }
-        print("Combined gestures count: \(gestures.count)")
-        
-        guard !gestures.isEmpty else {
-            print("No gestures found")
-            return AnyGesture(DragGesture(minimumDistance: 0).map { _ in () })
-        }
-        
-        guard gestures.count > 1 else {
-            print("Single gesture found")
-            return gestures[0]
-        }
-        
-        print("Multiple gestures found: \(gestures.count)")
-        var combinedGesture = gestures[0]
-        for gesture in gestures.dropFirst() {
-            combinedGesture = AnyGesture(
-                combinedGesture
-                    .simultaneously(with: gesture)
-                    .map { _ in () }
+        // Use first gesture as base and safely combine others
+        return validGestures.dropFirst().reduce(validGestures[0]) { result, next in
+            AnyGesture(
+                result.simultaneously(with: next)
+                    .map { _ in }
             )
         }
-        
-        return combinedGesture
     }
 }
 

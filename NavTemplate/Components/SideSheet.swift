@@ -2,79 +2,79 @@
 
 import SwiftUI
 
-class SideSheet<Content: View>: BaseWidget {
+struct SideSheet<Content: View>: Widget {
+    let id = UUID()
     let content: Content
-    let gestureHandler: DragGestureHandler
+    @Binding var isActive: Bool
+    @Binding var offset: CGFloat
+    @Binding var isDragging: Bool
+    @Binding var isExpanded: Bool
+    @Binding var directionChecked: Bool
     
     // Standard colors and dimensions
     private let backgroundColor = Color(uiColor: .systemGray6)
-    private let overlayColor = Color.black.opacity(0.5)
-    private let sheetWidth: CGFloat = UIScreen.main.bounds.width * 0.85
+    private let overlayColor = Color.black
     
-    init(@ViewBuilder content: () -> Content) {
-        // First initialize stored properties
+    init(content: @escaping () -> Content,
+         isActive: Binding<Bool>,
+         offset: Binding<CGFloat>,
+         isDragging: Binding<Bool>,
+         isExpanded: Binding<Bool>,
+         directionChecked: Binding<Bool>) {
         self.content = content()
-        
-        // Create a temporary self reference for the gesture handler
-        let widget = BaseWidget()
-        self.gestureHandler = DragGestureHandler(
-            widget: widget,
-            direction: .leftToRight
-        )
-        
-        // Call super.init()
-        super.init()
-        
-        // Update the gesture handler with the correct widget reference
-        self.gestureHandler.updateWidget(self)
+        self._isActive = isActive
+        self._offset = offset
+        self._isDragging = isDragging
+        self._isExpanded = isExpanded
+        self._directionChecked = directionChecked
     }
     
-    override var gesture: AnyGesture<()>? {
-        gestureHandler.makeGesture()
-    }
-    
-    override func setActive(_ active: Bool) {
-        print("SideSheet setActive called with: \(active)")
-        super.setActive(active)
-        print("SideSheet isActive is now: \(isActive)")
-    }
-    
-    override var view: AnyView {
-        let isActiveValue = isActive
-        
-        return AnyView(
+    var body: some View {
+        if isActive || offset > 0 {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    if isActiveValue {
-                        // Full screen overlay
-                        self.overlayColor
-                            .ignoresSafeArea()
-                            .onTapGesture {
-                                self.setActive(false)
-                            }
-                            .zIndex(1)
-                        
-                        // Side sheet content
-                        VStack(spacing: 0) {
-                            self.content
-                                .frame(width: self.sheetWidth)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                        .background(
-                            self.backgroundColor
-                                .ignoresSafeArea()
-                        )
-                        .frame(width: self.sheetWidth)
+                    // Background blur
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .opacity(Double(min(offset / SheetConstants.width, 0.7)))
                         .ignoresSafeArea()
-                        .transition(.move(edge: .leading))
-                        .zIndex(2)
+                    // Overlay
+                    overlayColor
+                        .opacity(Double(min(offset / SheetConstants.width, 0.6)))
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            NavigationState.shared.dismissSheet(
+                                isActive: $isActive,
+                                offset: $offset,
+                                isExpanded: $isExpanded,
+                                directionChecked: $directionChecked,
+                                isDragging: $isDragging
+                            )
+                        }
+                    
+                    // Sheet content
+                    VStack {
+                        content
                     }
+                    .frame(width: SheetConstants.width)
+                    .background(backgroundColor)
+                    .offset(x: -SheetConstants.width + offset)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .animation(.easeInOut, value: isActiveValue)
+                .ignoresSafeArea()
+                // Only use animation(.easeInOut) when not dragging and offset is not changing
+                .animation(isDragging ? nil : .easeInOut, value: offset)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()
-        )
+            .onAppear {
+                NavigationState.shared.isBackButtonHidden = true
+            }
+        } else {
+            Color.clear
+                .onAppear {
+                    NavigationState.shared.isBackButtonHidden = false
+                }
+        }
     }
 }
+

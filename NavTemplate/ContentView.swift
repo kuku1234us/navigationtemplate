@@ -11,10 +11,10 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject var navigationManager = NavigationManager()
-
+    
     var body: some View {
         NavigationStack(path: $navigationManager.navigationPath) {
-            AnyPage(HomePage(navigationManager: navigationManager))
+            HomePage(navigationManager: navigationManager)
                 .navigationDestination(for: AnyPage.self) { page in
                     page
                 }

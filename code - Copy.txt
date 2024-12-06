@@ -1,0 +1,598 @@
+```swift:Components\AnyObservableWidget.swift
+import SwiftUI
+import Combine
+
+class AnyObservableWidget: ObservableObject, Identifiable {
+    let id: UUID
+    @Published var isActive: Bool
+    var view: AnyView {
+        widget.view
+    }
+    let gesture: AnyGesture<()>?
+
+    private let _setActive: (Bool) -> Void
+    private var cancellables = Set<AnyCancellable>()
+    private let widget: (any Widget & ObservableObject)
+
+    init<W: Widget & ObservableObject>(_ widget: W) {
+        self.id = widget.id
+        self.isActive = widget.isActive
+        self.widget = widget
+        self.gesture = widget.gesture
+        self._setActive = widget.setActive
+
+        widget.objectWillChange
+            .sink { [weak self] _ in
+                self?.isActive = widget.isActive
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
+
+    func setActive(_ active: Bool) {
+        _setActive(active)
+    }
+}
+
+```
+
+```swift:Components\AnyPage.swift
+// AnyPage.swift
+
+import SwiftUI
+
+struct AnyPage: Identifiable, View, Hashable {
+    let id: UUID
+    private let _view: AnyView
+
+    init<P: Page>(_ page: P) {
+        self.id = page.id
+        self._view = AnyView(page)
+    }
+
+    var body: some View {
+        _view
+    }
+
+    static func == (lhs: AnyPage, rhs: AnyPage) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+}
+
+```
+
+```swift:Components\Page.swift
+// Page.swift
+
+import SwiftUI
+
+protocol Page: View {
+    var id: UUID { get }
+    var widgets: [AnyObservableWidget] { get set }
+    var navigationManager: NavigationManager? { get set }
+
+    @ViewBuilder func makeMainContent() -> AnyView
+}
+
+extension Page {
+    var id: UUID { UUID() }
+
+    var body: some View {
+        ZStack {
+            makeMainContent()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            
+            ForEach(widgets) { widget in
+                WidgetView(widget: widget)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .gesture(widgetGestures())
+    }
+    
+    private func widgetGestures() -> some Gesture {
+        guard var gesture = widgets.first?.gesture else {
+            return AnyGesture(
+                DragGesture()
+                    .map { _ in () }
+            )
+        }
+        
+        for widget in widgets.dropFirst() {
+            if let nextGesture = widget.gesture {
+                gesture = AnyGesture(
+                    gesture.sequenced(before: nextGesture)
+                        .map { _ in () }
+                )
+            }
+        }
+        
+        return gesture
+    }
+}
+
+
+
+```
+
+```swift:Components\SideSheet.swift
+// SideSheet.swift
+
+import SwiftUI
+import Combine
+
+class SideSheet<Content: View>: BaseWidget {
+    let content: Content
+    @ObservedObject var gestureHandler: DragGestureHandler {
+        willSet {
+            objectWillChange.send()  // Notify when gestureHandler changes
+        }
+    }
+    
+    // Standard colors and dimensions
+    private let backgroundColor = Color(uiColor: .systemGray6)
+    private let overlayColor = Color.black
+    private let sheetWidth: CGFloat = UIScreen.main.bounds.width * 0.85
+
+    private var cancellables = Set<AnyCancellable>()
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+        self.gestureHandler = DragGestureHandler(direction: .leftToRight)
+        super.init()
+        self.gestureHandler.updateWidget(self)
+        // Observe gestureHandler's changes
+        self.gestureHandler.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+    }
+    
+    override var gesture: AnyGesture<()>? {
+        gestureHandler.makeGesture()
+    }
+    
+    override func setActive(_ active: Bool) {
+        super.setActive(active)
+        withAnimation(.easeOut(duration: 0.3)) {
+            if active {
+                self.gestureHandler.dragOffset = sheetWidth
+                objectWillChange.send()  // Notify when we change state
+            } else {
+                self.gestureHandler.dragOffset = 0
+                objectWillChange.send()  // Notify when we change state
+            }
+        }
+    }
+    
+    override var view: AnyView {
+        return AnyView(
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    // Overlay
+                    self.overlayColor
+                        .opacity(Double(min(self.gestureHandler.dragOffset / self.sheetWidth, 0.9)))
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            self.setActive(false)
+                        }
+                    
+                    // Sheet content
+                    VStack {
+                        ScrollView {
+                            self.content
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+                    .frame(width: self.sheetWidth)
+                    .background(self.backgroundColor)
+                    .offset(x: -self.sheetWidth + self.gestureHandler.dragOffset)
+                }
+                .ignoresSafeArea()
+                .animation(.easeInOut, value: self.gestureHandler.dragOffset)
+            }
+            .ignoresSafeArea()
+        )
+    }
+}
+
+
+```
+
+```swift:Components\Widget.swift
+// Widget.swift
+
+import SwiftUI
+
+protocol Widget: Identifiable, ObservableObject {
+    var id: UUID { get }
+    var isActive: Bool { get }
+    var view: AnyView { get }
+    var gesture: AnyGesture<()>? { get }
+    
+    func setActive(_ active: Bool)
+}
+
+// Base class providing standard implementation
+class BaseWidget: ObservableObject, Widget {
+    var id: UUID = UUID()
+    @Published private(set) var isActive: Bool = false
+    
+    init() {
+        print("BaseWidget init, isActive: \(isActive)")
+    }
+    
+    var view: AnyView {
+        fatalError("Must override view")
+    }
+    
+    var gesture: AnyGesture<()>? { nil }
+    
+    func setActive(_ active: Bool) {
+        print("BaseWidget setActive called with: \(active)")
+        self.isActive = active
+        print("BaseWidget isActive is now: \(self.isActive)")
+        objectWillChange.send()  // Explicitly notify observers
+    }
+}
+
+```
+
+```swift:Components\WidgetView.swift
+import SwiftUI
+
+struct WidgetView: View {
+    @ObservedObject var widget: AnyObservableWidget
+
+    var body: some View {
+        if widget.isActive {
+            widget.view
+        }
+    }
+}
+
+```
+
+```swift:Navigation\DragGestureHandler.swift
+// DragGestureHandler.swift
+
+import SwiftUI
+
+class DragGestureHandler: ObservableObject, GestureHandler {
+    weak var widget: (any Widget)?
+    
+    private let direction: DragDirection
+    
+    @Published private(set) var debugText: String = "No gesture detected"
+    @Published var dragOffset: CGFloat = 0 {
+        willSet {
+            objectWillChange.send()  // Notify observers
+        }
+    }
+    @Published private(set) var translation: CGPoint = .zero
+    
+    private var isHandlingDrag: Bool = false
+    private var directionChecked: Bool = false
+    
+    enum DragDirection {
+        case rightToLeft
+        case leftToRight
+    }
+    
+    init(direction: DragDirection) {
+        self.direction = direction
+    }
+    
+    func updateWidget(_ widget: any Widget) {
+        self.widget = widget
+    }
+    
+    func makeGesture() -> AnyGesture<()> {
+        return AnyGesture(
+            DragGesture(minimumDistance: 5)
+                .onChanged { value in
+                    self.translation = CGPoint(
+                        x: value.translation.width,
+                        y: value.translation.height
+                    )
+                    let dragChange = value.translation.width
+                    
+                    if !self.directionChecked {
+                        let isHorizontal = abs(value.translation.width) > 
+                                         abs(value.translation.height)
+                        let isCorrectDirection = self.direction == .leftToRight ? 
+                                               dragChange > 0 : dragChange < 0
+                        
+                        self.directionChecked = true
+                        if isHorizontal && isCorrectDirection {
+                            self.isHandlingDrag = true
+                            self.widget?.setActive(true)
+                            self.debugText = "Activating widget"
+                            self.dragOffset = dragChange
+                        }
+                    }
+                    
+                    if self.isHandlingDrag {
+                        let sheetWidth = UIScreen.main.bounds.width * 0.85
+                        self.dragOffset = min(max(0, dragChange), sheetWidth)
+                    }
+                }
+                .onEnded { value in
+                    let sheetWidth = UIScreen.main.bounds.width * 0.85
+                    let dragChange = value.translation.width
+                    let threshold = sheetWidth / 3
+                    
+                    if self.isHandlingDrag {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            if dragChange > threshold {
+                                self.dragOffset = sheetWidth
+                            } else {
+                                self.dragOffset = 0
+                                self.widget?.setActive(false)
+                            }
+                        }
+                    }
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        self.isHandlingDrag = false
+                        self.directionChecked = false
+                    }
+                }
+                .map { _ in () }
+        )
+    }
+}
+
+
+```
+
+```swift:Navigation\GestureHandler.swift
+// GestureHandler.swift
+
+import SwiftUI
+
+protocol GestureHandler {
+    var debugText: String { get }
+    var translation: CGPoint { get }
+    
+    func makeGesture() -> AnyGesture<()>
+    func updateWidget(_ widget: any Widget)
+}
+
+// Default implementation
+extension GestureHandler {
+    var debugText: String { "" }
+    var translation: CGPoint { .zero }
+}
+
+extension CGPoint {
+    static func + (lhs: CGPoint, rhs: CGPoint) -> CGPoint {
+        CGPoint(x: lhs.x + rhs.x, y: lhs.y + rhs.y)
+    }
+}
+
+```
+
+```swift:Navigation\NavigationManager.swift
+// NavigationManager.swift
+
+import SwiftUI
+
+class NavigationManager: ObservableObject {
+    @Published var navigationPath: [AnyPage] = []
+
+    func navigate(to page: AnyPage) {
+        navigationPath.append(page)
+    }
+
+    func navigateBack() {
+        if !navigationPath.isEmpty {
+            navigationPath.removeLast()
+        }
+    }
+
+    func navigateToRoot() {
+        navigationPath.removeAll()
+    }
+}
+
+```
+
+```swift:Views\BookPage.swift
+// BookPage.swift
+
+import SwiftUI
+import Combine
+
+class BookPageViewModel: ObservableObject {
+    @Published var widgets: [AnyObservableWidget] = []
+    let title: String
+    let author: String
+    weak var navigationManager: NavigationManager?
+
+    private var cancellables = Set<AnyCancellable>()
+
+    @Published var debugText: String = "No gesture detected"
+    @Published var translation: CGPoint = .zero
+
+    private var sheet: SideSheet<AnyView>! // Declare sheet as a property
+
+    init(title: String, author: String, navigationManager: NavigationManager?) {
+        self.title = title
+        self.author = author
+        self.navigationManager = navigationManager
+        setupWidgets()
+    }
+
+    private func setupWidgets() {
+        print("Setting up widgets")
+        sheet = SideSheet {
+            VStack {
+                Text("Book Details")
+                    .font(.largeTitle)
+                Text("Title: \(self.title)")
+                Text("Author: \(self.author)")
+                Button("Close") {
+                    self.sheet.setActive(false) // Use self.sheet
+                }
+            }
+            .padding()
+            .eraseToAnyView()
+        }
+
+        print("Sheet created with gesture: \(sheet.gesture != nil)")
+        self.widgets = [AnyObservableWidget(sheet)]
+
+        sheet.gestureHandler.$debugText
+            .sink { [weak self] text in
+                self?.debugText = text
+            }
+            .store(in: &cancellables)
+
+        sheet.gestureHandler.$translation
+            .sink { [weak self] translation in
+                self?.translation = translation
+            }
+            .store(in: &cancellables)
+    }
+}
+
+struct BookPage: Page {
+    var id: UUID = UUID()
+    var navigationManager: NavigationManager?
+
+    var widgets: [AnyObservableWidget] { // Updated type
+        get { viewModel.widgets }
+        set { viewModel.widgets = newValue }
+    }
+
+    @StateObject private var viewModel: BookPageViewModel
+    
+    init(title: String, author: String, navigationManager: NavigationManager?) {
+        _viewModel = StateObject(wrappedValue: BookPageViewModel(
+            title: title,
+            author: author,
+            navigationManager: navigationManager
+        ))
+        self.navigationManager = navigationManager
+    }
+    
+    func makeMainContent() -> AnyView {
+        AnyView(
+            VStack(spacing: 20) {
+                Text("Book Page")
+                    .font(.largeTitle)
+                Text("Title: \(viewModel.title)")
+                Text("Author: \(viewModel.author)")
+                
+                // Debug information
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Debug Info:")
+                        .font(.headline)
+                    Text(viewModel.debugText)
+                        .font(.system(.body, design: .monospaced))
+                    Text("Translation: (\(viewModel.translation.x.rounded(), specifier: "%.1f"), \(viewModel.translation.y.rounded(), specifier: "%.1f"))")
+                        .font(.system(.body, design: .monospaced))
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
+                
+                Button("Go Back") {
+                    navigationManager?.navigateBack()
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.red)
+        )
+    }
+}
+
+```
+
+```swift:Views\DailyPage.swift
+// DailyPage.swift
+
+import SwiftUI
+
+struct DailyPage: Page {
+    var id: UUID = UUID()
+    var navigationManager: NavigationManager?
+    var widgets: [AnyObservableWidget] = [] // Updated type
+
+    let date: Date
+
+    init(date: Date, navigationManager: NavigationManager?) {
+        self.date = date
+        self.navigationManager = navigationManager
+    }
+
+    func makeMainContent() -> AnyView {
+        AnyView(
+            VStack {
+                Text("Daily Page")
+                    .font(.largeTitle)
+                Text("Date: \(date.formatted(date: .long, time: .omitted))")
+                Button("Go Back") {
+                    navigationManager?.navigateBack()
+                }
+            }
+        )
+    }
+}
+
+
+```
+
+```swift:Views\HomePage.swift
+// HomePage.swift
+
+import SwiftUI
+
+struct HomePage: Page {
+    var id: UUID = UUID()
+    var navigationManager: NavigationManager?
+    var widgets: [AnyObservableWidget] = [] // Updated type
+
+    init(navigationManager: NavigationManager?) {
+        self.navigationManager = navigationManager
+    }
+
+    func makeMainContent() -> AnyView {
+        AnyView(
+            VStack {
+                Text("Home Page")
+                    .font(.largeTitle)
+                Button("Go to Book Page") {
+                    let bookPage = BookPage(title: "Sample Book", author: "John Doe", navigationManager: navigationManager)
+                    navigationManager?.navigate(to: AnyPage(bookPage))
+                }
+                Button("Go to Daily Page") {
+                    let dailyPage = DailyPage(date: Date(), navigationManager: navigationManager)
+                    navigationManager?.navigate(to: AnyPage(dailyPage))
+                }
+            }
+        )
+    }
+}
+
+
+```
+
+```swift:Utilities\ViewExtensions.swift
+import SwiftUI
+
+extension View {
+    func eraseToAnyView() -> AnyView {
+        AnyView(self)
+    }
+} 
+```
+
