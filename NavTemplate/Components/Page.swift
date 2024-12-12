@@ -14,19 +14,23 @@ extension Page {
     var viewModel: PageViewModel { PageViewModel.shared }
     
     var body: some View {
-        ZStack {
+        let gestures = widgetGestures()  // Create once
+        
+        return ZStack {
             makeMainContent()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .simultaneousGesture(gestures)  // Use first time
             
             ForEach(widgets) { widget in
                 widget
             }
         }
-        .background(ColorUtilities.fromHex("#5f2215"))
+        .background(Color("Background"))
+        .foregroundColor(Color("MyPrimary"))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
-        .gesture(widgetGestures())
-        .navigationBarBackButtonHidden(viewModel.isBackButtonHidden)
+        .gesture(gestures)  // Use second time
+        .navigationBarHidden(true)
     }
     
     private func widgetGestures() -> AnyGesture<Void> {

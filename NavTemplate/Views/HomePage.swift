@@ -3,11 +3,33 @@
 import SwiftUI
 
 struct HomePage: Page {
-    @EnvironmentObject var navigationState: NavigationState
+    
     var navigationManager: NavigationManager?
 
+    // Create stable ID for sidesheet
+    private let leftSheetId = UUID()
+    
     var widgets: [AnyWidget] {
-        return []
+        // Left sheet setup
+        let leftSideSheet = SideSheet(
+            id: leftSheetId,
+            content: {
+                HomeLeftSidesheetView()
+            },
+            direction: .leftToRight
+        )
+        
+        let leftGestureHandler = DragGestureHandler(
+            proxy: leftSideSheet.proxy,
+            direction: .leftToRight
+        )
+        
+        let leftWidget = WidgetWithGesture(
+            widget: leftSideSheet,
+            gesture: leftGestureHandler
+        )
+        
+        return [AnyWidget(leftWidget)]
     }
 
     init(navigationManager: NavigationManager?) {
@@ -16,26 +38,58 @@ struct HomePage: Page {
 
     func makeMainContent() -> AnyView {
         AnyView(
-            VStack {
-                Text("Home Page")
-                    .font(.largeTitle)
-                Button("Go to Book Page") {
-                    let bookPage = BookPage(
-                        navigationManager: navigationManager,
-                        title: "Sample Book",
-                        author: "John Doe"
+            ViewWithBottomMenu(items: [
+                MenuBarItem(
+                    unselectedIcon: "house",
+                    selectedIcon: "house.fill",
+                    targetView: DashboardLinksView(navigationManager: navigationManager).makeView()
+                ),
+                MenuBarItem(
+                    unselectedIcon: "sun.horizon",
+                    selectedIcon: "sun.horizon.fill",
+                    targetView: AnyView(
+                        ActivitiesPage(
+                            navigationManager: navigationManager
+                        )
                     )
-                    navigationManager?.navigate(to: AnyPage(bookPage))
-                }
-                Button("Go to Daily Page") {
-                    let dailyPage = DailyPage(
-                        date: Date(),
-                        navigationManager: navigationManager
+                ),
+                MenuBarItem(
+                    unselectedIcon: "book",
+                    selectedIcon: "book.fill",
+                    targetView: AnyView(
+                        BookPage(
+                            navigationManager: navigationManager,
+                            title: "Sample Book",
+                            author: "John Doe"
+                        )
                     )
-                    navigationManager?.navigate(to: AnyPage(dailyPage))
-                }
+                ),
+                MenuBarItem(
+                    unselectedIcon: "calendar",
+                    selectedIcon: "calendar.circle.fill",
+                    targetView: AnyView(
+                        DailyPage(
+                            date: Date(),
+                            navigationManager: navigationManager
+                        )
+                    )
+                ),
+                MenuBarItem(
+                    unselectedIcon: "folder",
+                    selectedIcon: "folder.fill",
+                    targetView: AnyView(
+                        iCloudPage(
+                            navigationManager: navigationManager
+                        )
+                    )
+                )
+            ])
+            .onDisappear {
+                print(">>>>> HomePage cleanup")
+                PropertyProxyFactory.shared.remove(id: leftSheetId)
+                NavigationState.shared.setActiveWidgetId(nil)
             }
-            .padding()
         )
     }
 }
+

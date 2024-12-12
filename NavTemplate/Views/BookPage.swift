@@ -5,47 +5,58 @@ import SwiftUI
 struct BookPage: Page {
     var navigationManager: NavigationManager?
 
-    @State private var isSideSheetActive: Bool = false
-    @State private var sideSheetOffset: CGFloat = 0
-    @State private var isDragging: Bool = false
     @State private var debugText: String = "No gesture detected"
     @State private var translation: CGPoint = .zero
-    @State private var isExpanded: Bool = false
-    @State private var directionChecked: Bool = false
 
     let title: String
     let author: String
 
-    var widgets: [AnyWidget] {
-        let sideSheet = SideSheet(
-            content: {
-                SideSheetContent(title: title, author: author)
-            },
-            isActive: $isSideSheetActive,
-            offset: $sideSheetOffset,
-            isDragging: $isDragging,
-            isExpanded: $isExpanded,
-            directionChecked: $directionChecked
-        )
+    // Create stable IDs
+    private let leftSheetId = UUID()
+    private let rightSheetId = UUID()
 
-        let gestureHandler = DragGestureHandler(
-            offset: $sideSheetOffset,
-            isActive: $isSideSheetActive,
-            debugText: $debugText,
-            translation: $translation,
-            isDragging: $isDragging,
-            isExpanded: $isExpanded,
+    var widgets: [AnyWidget] {
+        // Left sheet setup
+        let leftSideSheet = SideSheet(
+            id: leftSheetId,
+            content: {
+                LeftSideSheetContent(title: title, author: author)
+            },
             direction: .leftToRight
         )
 
-        let sideSheetWithGesture = WidgetWithGesture(
-            widget: sideSheet,
-            gesture: gestureHandler
+        let leftGestureHandler = DragGestureHandler(
+            proxy: leftSideSheet.proxy,
+            direction: .leftToRight
         )
 
-        return [AnyWidget(sideSheetWithGesture)]
-    }
+        let leftWidget = WidgetWithGesture(
+            widget: leftSideSheet,
+            gesture: leftGestureHandler
+        )
 
+        // Right sheet setup
+        let rightSideSheet = SideSheet(
+            id: rightSheetId,
+            content: {
+                RightSideSheetContent()
+            },
+            direction: .rightToLeft
+        )
+
+        let rightGestureHandler = DragGestureHandler(
+            proxy: rightSideSheet.proxy,
+            direction: .rightToLeft
+        )
+
+        let rightWidget = WidgetWithGesture(
+            widget: rightSideSheet,
+            gesture: rightGestureHandler
+        )
+
+        return [AnyWidget(leftWidget), AnyWidget(rightWidget)]
+    }
+    
     func makeMainContent() -> AnyView {
         AnyView(
             VStack(spacing: 20) {
@@ -73,27 +84,47 @@ struct BookPage: Page {
             }
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onDisappear {
+                print(">>>>> BookPage cleanup")
+                PropertyProxyFactory.shared.remove(id: leftSheetId)
+                PropertyProxyFactory.shared.remove(id: rightSheetId)
+                NavigationState.shared.setActiveWidgetId(nil)
+            }
         )
     }
-}
 
+    // Move LeftSideSheetContent inside BookPage
+    private struct LeftSideSheetContent: View {
+        let title: String
+        let author: String
 
-struct SideSheetContent: View {
-    let title: String
-    let author: String
-
-    var body: some View {
-        VStack {
-            Text("Book Details")
-                .font(.largeTitle)
-            Text("Title: \(title)")
-            Text("Author: \(author)")
-            Button("Close") {
-                // Logic to close the side sheet
+        var body: some View {
+            VStack {
+                Text("Book Details")
+                    .font(.largeTitle)
+                Text("Title: \(title)")
+                Text("Author: \(author)")
+                Button("Close") {
+                    // Logic to close the side sheet
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(ColorUtilities.fromHex("#151f5f"))
-        .ignoresSafeArea()
+    }
+
+    private struct RightSideSheetContent: View {
+        var body: some View {
+            VStack(spacing: 0) {
+                Text("Chapters")
+                    .font(.headline)
+                    .padding()
+                
+                List(1...10, id: \.self) { chapter in
+                    Text("Chapter \(chapter)")
+                }
+                .listStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }

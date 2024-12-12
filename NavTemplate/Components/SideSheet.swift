@@ -2,79 +2,79 @@
 
 import SwiftUI
 
-struct SideSheet<Content: View>: Widget {
-    let id = UUID()
-    let content: Content
-    @Binding var isActive: Bool
-    @Binding var offset: CGFloat
-    @Binding var isDragging: Bool
-    @Binding var isExpanded: Bool
-    @Binding var directionChecked: Bool
-    
-    // Standard colors and dimensions
-    private let backgroundColor = Color(uiColor: .systemGray6)
-    private let overlayColor = Color.black
-    
-    init(content: @escaping () -> Content,
-         isActive: Binding<Bool>,
-         offset: Binding<CGFloat>,
-         isDragging: Binding<Bool>,
-         isExpanded: Binding<Bool>,
-         directionChecked: Binding<Bool>) {
-        self.content = content()
-        self._isActive = isActive
-        self._offset = offset
-        self._isDragging = isDragging
-        self._isExpanded = isExpanded
-        self._directionChecked = directionChecked
+extension UIApplication {
+    var keyWindow: UIWindow? {
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
     }
-    
+}
+
+struct SideSheet<Content: View>: Widget {
+    let content: Content
+    let direction: DragGestureHandler.DragDirection
+    @ObservedObject var proxy: PropertyProxy
+
+    var id: UUID { proxy.id }
+
+    private var safeAreaInsets: UIEdgeInsets {
+        UIApplication.shared.keyWindow?.safeAreaInsets ?? .zero
+    }
+
+    init(id: UUID, content: @escaping () -> Content, direction: DragGestureHandler.DragDirection) {
+        self.content = content()
+        self.direction = direction
+        self.proxy = PropertyProxyFactory.shared.proxy(
+            for: id,
+            initialOffset: direction == .leftToRight ? 
+                -SheetConstants.width : SheetConstants.width
+        )
+        print(">>>>> SideSheet init: \(id)")
+    }
+
     var body: some View {
-        if isActive || offset > 0 {
+        if proxy.isActive {
             GeometryReader { geometry in
-                ZStack(alignment: .leading) {
+                ZStack(alignment: direction == .leftToRight ? .leading : .trailing) {
                     // Background blur
                     Rectangle()
-                        .fill(.ultraThinMaterial)
-                        .opacity(Double(min(offset / SheetConstants.width, 0.7)))
-                        .ignoresSafeArea()
+                        .fill(Color.clear)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .backgroundBlur(radius: Double(min(1-abs(proxy.offset / SheetConstants.width), 1.0)*10), opaque: true)
+
                     // Overlay
-                    overlayColor
-                        .opacity(Double(min(offset / SheetConstants.width, 0.6)))
-                        .ignoresSafeArea()
+                    Color.black
+                        .opacity(Double(min(1-abs(proxy.offset / SheetConstants.width), 0.7)))
                         .onTapGesture {
                             NavigationState.shared.dismissSheet(
-                                isActive: $isActive,
-                                offset: $offset,
-                                isExpanded: $isExpanded,
-                                directionChecked: $directionChecked,
-                                isDragging: $isDragging
+                                proxy: proxy,
+                                direction: direction
                             )
                         }
                     
                     // Sheet content
-                    VStack {
+                    VStack(spacing: 0) {
                         content
+
                     }
                     .frame(width: SheetConstants.width)
-                    .background(backgroundColor)
-                    .offset(x: -SheetConstants.width + offset)
+                    .padding(.top, safeAreaInsets.top)
+                    .padding(.bottom, safeAreaInsets.bottom)
+                    .background(Color("SideSheetBg"))
+                    .offset(x: proxy.offset)
+                    .edgesIgnoringSafeArea(.horizontal)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea()
-                // Only use animation(.easeInOut) when not dragging and offset is not changing
-                .animation(isDragging ? nil : .easeInOut, value: offset)
-            }
-            .ignoresSafeArea()
-            .onAppear {
-                NavigationState.shared.isBackButtonHidden = true
+                .onAppear {
+                    NavigationState.shared.isBackButtonHidden = true
+                }
             }
         } else {
             Color.clear
-                .onAppear {
+                .onDisappear {
+                    // Also clean up when sheet becomes inactive
                     NavigationState.shared.isBackButtonHidden = false
                 }
         }
     }
 }
-

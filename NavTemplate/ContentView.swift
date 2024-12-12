@@ -10,6 +10,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var navigationState: NavigationState
     @StateObject var navigationManager = NavigationManager()
     
     var body: some View {

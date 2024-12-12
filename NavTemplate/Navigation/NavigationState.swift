@@ -4,40 +4,48 @@ import SwiftUI
 
 class NavigationState: ObservableObject {
     @Published var isBackButtonHidden: Bool = false
+    private var activeWidgetId: UUID?
+    
+    // Add bottom menu height constant
+    static let bottomMenuHeight: CGFloat = 70
     
     static let shared = NavigationState()
     private init() {}
     
-    func dismissSheet(isActive: Binding<Bool>, 
-                     offset: Binding<CGFloat>,
-                     isExpanded: Binding<Bool>? = nil,
-                     directionChecked: Binding<Bool>? = nil,
-                     isDragging: Binding<Bool>? = nil) {
-        
-        withAnimation(.easeOut(duration: 0.3)) {
-            offset.wrappedValue = 0
+    // Active widget ID accessors
+    func getActiveWidgetId() -> UUID? {
+        return activeWidgetId
+    }
+    
+    func setActiveWidgetId(_ id: UUID?) {
+        activeWidgetId = id
+    }
+    
+    func dismissSheet(proxy: PropertyProxy, direction: DragGestureHandler.DragDirection) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            proxy.offset = direction == .leftToRight ? 
+                -SheetConstants.width : SheetConstants.width
         }
         
-        // Reset drag-related states if provided
-        isDragging?.wrappedValue = false
-        directionChecked?.wrappedValue = false
+        // Clear active widget when dismissing
+        setActiveWidgetId(nil)
         
-        // Wait for animation and view cleanup to complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isActive.wrappedValue = false
-            isExpanded?.wrappedValue = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            proxy.isActive = false
+            proxy.isExpanded = false
             
+            // Force UI update by dispatching to main queue
             // Force UI update by dispatching to main queue
             DispatchQueue.main.async {
                 self.isBackButtonHidden = false
-                self.objectWillChange.send()  // Explicitly notify observers
+                self.objectWillChange.send()
             }
         }
     }
     
-    func expandSheet(offset: Binding<CGFloat>) {
-        withAnimation(.easeOut(duration: 0.3)) {
-            offset.wrappedValue = SheetConstants.width
+    func expandSheet(proxy: PropertyProxy) {        
+        withAnimation(.easeOut(duration: 0.2)) {
+            proxy.offset = 0
         }
     }
 } 
