@@ -85,7 +85,6 @@ struct BookPage: Page {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onDisappear {
-                print(">>>>> BookPage cleanup")
                 PropertyProxyFactory.shared.remove(id: leftSheetId)
                 PropertyProxyFactory.shared.remove(id: rightSheetId)
                 NavigationState.shared.setActiveWidgetId(nil)

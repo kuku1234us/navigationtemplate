@@ -11,26 +11,28 @@ struct ActivitiesPage: Page {
     
     @State private var isLoading = false
     
+    @State private var editingItem: ActivityItem?
+    @State private var showingEditDialog = false
+    @State private var editingItemFrame: CGRect = .zero
+    @State private var dialogOffset: CGSize = .zero
+    @State private var dialogRect: CGRect = .zero // Track dialog rect
+    
     private func updateStateFromStack() {
-        print(">>>>> ActivitiesPage: Updating state from stack")
         if let lastConscious = activityStack.getLastConsciousItem() {
             DispatchQueue.main.async {
                 self.consciousState = lastConscious.activityType
                 self.lastConsciousTime = lastConscious.activityTime
-                print(">>>>> ActivitiesPage: Updated conscious state to: \(self.consciousState)")
             }
         }
         
         if let lastMeal = activityStack.getLastMealItem() {
             DispatchQueue.main.async {
                 self.lastMealTime = lastMeal.activityTime
-                print(">>>>> ActivitiesPage: Updated last meal time")
             }
         }
     }
     
     private func handleActivitySelection(_ activity: ActivityType) {
-        print(">>>>> ActivitiesPage: Selected activity: \(activity.rawValue)")
         let now = Date()
         let newActivity = ActivityItem(type: activity, time: now)
         
@@ -42,15 +44,37 @@ struct ActivitiesPage: Page {
         case .sleep, .wake:
             consciousState = activity
             lastConsciousTime = now
-            print(">>>>> ActivitiesPage: Updated conscious state to: \(activity.rawValue)")
             
         case .meal:
             lastMealTime = now
-            print(">>>>> ActivitiesPage: Updated meal time")
             
         case .exercise:
-            print(">>>>> ActivitiesPage: Exercise activity recorded")
             break
+        }
+    }
+    
+    private func handleEdit(item: ActivityItem, frame: CGRect) {
+        editingItem = item
+        editingItemFrame = frame
+
+        // Start MyDialog at the item's frame
+        dialogRect = frame
+        print("Dialog rect: \(dialogRect)")
+        showingEditDialog = true
+
+        // Animate to final position and size (center of screen, 400x300)
+        let finalWidth: CGFloat = 400
+        let finalHeight: CGFloat = 300
+        let screenSize = UIScreen.main.bounds.size
+        let finalRect = CGRect(
+            x: (screenSize.width - finalWidth) / 2,
+            y: (screenSize.height - finalHeight) / 2,
+            width: finalWidth,
+            height: finalHeight
+        )
+
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            dialogRect = finalRect
         }
     }
     
@@ -78,10 +102,13 @@ struct ActivitiesPage: Page {
                     )
                     
                     HStack(spacing: 0) {
-                        ActivityListView(activityStack: activityStack) { item in
-                            print(">>>>> ActivitiesPage: Undo requested for: \(item.activityType.rawValue)")
-                            // TODO: Implement undo
-                        }
+                        ActivityListView(
+                            activityStack: activityStack,
+                            onUndo: { item in
+                                print("Undo activity: \(item.activityType.rawValue)")
+                            },
+                            onEdit: handleEdit
+                        )
                         .frame(maxWidth: .infinity)
                         
                         ActivitiesMenu(
@@ -94,9 +121,37 @@ struct ActivitiesPage: Page {
                     .padding(.leading)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                
+                // Overlay for edit dialog
+                if showingEditDialog {
+                    Color.black
+                        .opacity(0.3)
+                        .ignoresSafeArea()
+                        .transition(.opacity)
+                    
+                    TimeAndActivityPickerDialog()
+                        .frame(width: dialogRect.width, height: dialogRect.height)
+                        .position(x: dialogRect.midX, y: dialogRect.midY)                    
+                    // (
+                        // initialActivity: editingItem?.activityType ?? .sleep,
+                        // initialTime: editingItem?.activityTime ?? Date(),
+                        // onSave: { activity, time in
+                        //     // TODO: Handle edit
+                        //     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        //         showingEditDialog = false
+                        //     }
+                        // },
+                        // onCancel: {
+                        //     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        //         showingEditDialog = false
+                        //     }
+                        // }
+                    // )
+                    // .offset(dialogOffset)
+                    // .transition(.scale.combined(with: .opacity))
+                }
             }
             .onAppear {
-                print(">>>>> ActivitiesPage: Loading activities")
                 isLoading = true
                 
                 // Load activities and update state

@@ -6,41 +6,39 @@ class QuarterFileManager {
     private let fileCoordinator = NSFileCoordinator()
     
     private init() {
-        print(">>>>> QuarterFileManager: Initializing...")
         ensureBaseDirectoryExists()
     }
     
     internal var vaultURL: URL? {
         let url = ObsidianVaultAccess.shared.vaultURL
         if url == nil {
-            print(">>>>> QuarterFileManager: No vault URL available")
+            print("QuarterFileManager: No vault URL available")
         }
         return url
     }
     
     private func ensureBaseDirectoryExists() {
         guard let vault = vaultURL else {
-            print(">>>>> QuarterFileManager: Cannot create base directory - no vault access")
+            print("QuarterFileManager: Cannot create base directory - no vault access")
             return
         }
         
         guard vault.startAccessingSecurityScopedResource() else {
-            print(">>>>> QuarterFileManager: Cannot access vault for base directory creation")
+            print("QuarterFileManager: Cannot access vault for base directory creation")
             return
         }
         defer { vault.stopAccessingSecurityScopedResource() }
         
         let baseURL = vault.appendingPathComponent(baseDirectory)
-        print(">>>>> QuarterFileManager: Ensuring base directory exists at: \(baseURL.path)")
         
         do {
             try FileManager.default.createDirectory(
                 at: baseURL,
                 withIntermediateDirectories: true
             )
-            print(">>>>> QuarterFileManager: Base directory created/verified")
+            print("QuarterFileManager: Base directory created/verified")
         } catch {
-            print(">>>>> QuarterFileManager: Error creating base directory: \(error)")
+            print("QuarterFileManager: Error creating base directory: \(error)")
         }
     }
     
@@ -68,20 +66,17 @@ class QuarterFileManager {
     
     // MARK: - Public Methods
     func appendActivity(_ activity: ActivityItem) throws {
-        print(">>>>> QuarterFileManager: Attempting to append activity: \(activity.activityType.rawValue) at \(activity.activityTime)")
-        
         guard let vault = vaultURL else {
-            print(">>>>> QuarterFileManager: Cannot append - no vault access")
+            print("QuarterFileManager: Cannot append - no vault access")
             throw QuarterFileError.noVaultAccess
         }
         
         guard vault.startAccessingSecurityScopedResource() else {
-            print(">>>>> QuarterFileManager: Cannot access vault for append")
+            print("QuarterFileManager: Cannot access vault for append")
             throw QuarterFileError.noVaultAccess
         }
         defer { 
             vault.stopAccessingSecurityScopedResource()
-            print(">>>>> QuarterFileManager: Released vault access")
         }
         
         var writeError: Error?
@@ -91,20 +86,16 @@ class QuarterFileManager {
             do {
                 let baseURL = url.appendingPathComponent(baseDirectory)
                 let (year, quarter) = getQuarterInfo(for: activity.activityTime)
-                print(">>>>> QuarterFileManager: Writing to Year: \(year), Quarter: \(quarter)")
                 
                 let yearPath = baseURL.appendingPathComponent(year)
-                print(">>>>> QuarterFileManager: Ensuring year directory exists at: \(yearPath.path)")
                 try ensureDirectoryExists(at: yearPath)
                 
                 let quarterFile = getQuarterFilePath(year: year, quarter: quarter, baseURL: baseURL)
-                print(">>>>> QuarterFileManager: Quarter file path: \(quarterFile.path)")
                 
                 let timestamp = Int(activity.activityTime.timeIntervalSince1970)
                 let entry = "\(activity.activityType.rawValue):: \(timestamp)\n"
                 
                 if FileManager.default.fileExists(atPath: quarterFile.path) {
-                    print(">>>>> QuarterFileManager: Appending to existing file")
                     let fileHandle = try FileHandle(forWritingTo: quarterFile)
                     defer { try? fileHandle.close() }
                     try fileHandle.seekToEnd()
@@ -112,24 +103,20 @@ class QuarterFileManager {
                         try fileHandle.write(contentsOf: data)
                     }
                 } else {
-                    print(">>>>> QuarterFileManager: Creating new quarter file")
                     try entry.write(to: quarterFile, atomically: true, encoding: .utf8)
                 }
-                print(">>>>> QuarterFileManager: Successfully wrote activity")
             } catch {
                 writeError = error
             }
         }
         
         if let error = writeError ?? coordinatorError {
-            print(">>>>> QuarterFileManager: Error occurred: \(error)")
+            print("QuarterFileManager: Error occurred: \(error)")
             throw QuarterFileError.fileOperationFailed(error.localizedDescription)
         }
     }
     
     func loadLatestActivities(count: Int) throws -> [ActivityItem] {
-        print(">>>>> QuarterFileManager: Loading latest \(count) activities")
-        
         guard let vault = vaultURL else {
             throw QuarterFileError.noVaultAccess
         }
@@ -197,7 +184,6 @@ class QuarterFileManager {
             throw QuarterFileError.fileOperationFailed(error.localizedDescription)
         }
         
-        print(">>>>> QuarterFileManager: Loaded \(activities.count) activities")
         return activities
             .sorted { $0.activityTime > $1.activityTime }
             .prefix(count)

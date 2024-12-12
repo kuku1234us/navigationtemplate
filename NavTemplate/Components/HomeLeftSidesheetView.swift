@@ -13,7 +13,7 @@ struct HomeLeftSidesheetView: View {
                 
                 Button(action: {
                     // Settings action
-                    print("Settings tapped")
+
                 }) {
                     Image(systemName: "gearshape")
                         .font(.title2)

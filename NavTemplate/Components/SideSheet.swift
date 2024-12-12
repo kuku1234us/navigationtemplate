@@ -30,7 +30,6 @@ struct SideSheet<Content: View>: Widget {
             initialOffset: direction == .leftToRight ? 
                 -SheetConstants.width : SheetConstants.width
         )
-        print(">>>>> SideSheet init: \(id)")
     }
 
     var body: some View {

@@ -29,17 +29,3 @@ struct ActivitiesMenu: View {
         .frame(maxWidth: 100)
     }
 }
-
-#Preview {
-    ZStack {
-        Color.black
-            .ignoresSafeArea()
-        
-        ActivitiesMenu(
-            onSelect: { activity in
-                print("Selected: \(activity.rawValue)")
-            },
-            consciousState: .constant(.wake)
-        )
-    }
-} 

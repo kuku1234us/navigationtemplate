@@ -33,7 +33,6 @@ class PropertyProxyFactory {
     }
     
     func remove(id: UUID) {
-        print(">>>>> remove: \(id)")
         proxies.removeValue(forKey: id)
     }
 } 

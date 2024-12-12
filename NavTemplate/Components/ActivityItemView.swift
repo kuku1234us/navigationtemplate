@@ -3,6 +3,9 @@ import SwiftUI
 struct ActivityItemView: View {
     let item: ActivityItem
     let onUndo: () -> Void
+    let onEdit: (CGRect) -> Void
+    
+    @State private var itemFrame: CGRect = .zero
     
     private func formatTime(_ date: Date) -> String {
         let formatter = DateFormatter()
@@ -23,6 +26,10 @@ struct ActivityItemView: View {
                 .font(.title2)
                 .foregroundColor(Color("MySecondary"))
                 .frame(width: 44)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onEdit(itemFrame)
+                }
             
             // Time and Date
             VStack(alignment: .leading, spacing: 0) {
@@ -34,6 +41,10 @@ struct ActivityItemView: View {
                 Text(formatDate(item.activityTime))
                     .font(.footnote)
                     .foregroundColor(Color("MyTertiary"))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onEdit(itemFrame)
             }
             
             Spacer()
@@ -47,24 +58,18 @@ struct ActivityItemView: View {
         }
         .padding()
         .background(Color("SideSheetBg").opacity(0.2))
+        .background(GeometryReader { geo in
+            Color.clear.onAppear {
+                DispatchQueue.main.async {
+                    itemFrame = geo.frame(in: .global)
+                }
+            }
+            .onTapGesture {
+                print("Inside ActivityItemView: Item frame: \(itemFrame)")
+                // let frame = geo.frame(in: .global)
+                onEdit(itemFrame)
+            }
+        })
     }
 }
 
-#Preview {
-    VStack(spacing: 20) {
-        ActivityItemView(
-            item: ActivityItem(type: .sleep, time: Date()),
-            onUndo: { print("Undo tapped") }
-        )
-        ActivityItemView(
-            item: ActivityItem(type: .wake, time: Date().addingTimeInterval(-3600)),
-            onUndo: { print("Undo tapped") }
-        )
-        ActivityItemView(
-            item: ActivityItem(type: .meal, time: Date().addingTimeInterval(-7200)),
-            onUndo: { print("Undo tapped") }
-        )
-    }
-    .padding()
-    .background(Color.black)
-} 

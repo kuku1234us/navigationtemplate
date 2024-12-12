@@ -1,15 +1,33 @@
 import SwiftUI
 
 struct TimeAndActivityPickerDialog: View {
-    @State private var selectedActivity: Activity
-    @State private var selectedHour: Int = 0
-    @State private var selectedMinute: Int = 0
-
-    private let activities: [Activity] = ActivityType.allCases.map { Activity(type: $0) }
+    // let initialActivity: ActivityType
+    // let initialTime: Date
+    // let onSave: (ActivityType, Date) -> Void
+    // let onCancel: () -> Void
     
-    init() {
-        _selectedActivity = State(initialValue: Activity(type: .sleep))
-    }
+    @State private var selectedActivity: Activity = Activity(type: .sleep)
+    @State private var selectedHour: Int = 0   
+    @State private var selectedMinute: Int = 0
+    
+    // init(
+    //     initialActivity: ActivityType,
+    //     initialTime: Date,
+    //     onSave: @escaping (ActivityType, Date) -> Void,
+    //     onCancel: @escaping () -> Void
+    // ) {
+    //     self.initialActivity = initialActivity
+    //     self.initialTime = initialTime
+    //     self.onSave = onSave
+    //     self.onCancel = onCancel
+        
+    //     let calendar = Calendar.current
+    //     _selectedActivity = State(initialValue: Activity(type: initialActivity))
+    //     _selectedHour = State(initialValue: calendar.component(.hour, from: initialTime))
+    //     _selectedMinute = State(initialValue: calendar.component(.minute, from: initialTime))
+    // }
+    
+    private let activities: [Activity] = ActivityType.allCases.map { Activity(type: $0) }
     
     var body: some View {
         VStack {
@@ -156,12 +174,17 @@ struct InfinitePicker<Data: RandomAccessCollection, Content: View>: View where D
 }
 
 // Preview
-struct TimeAndActivityPickerDialog_Previews: PreviewProvider {
-    static var previews: some View {
-        TimeAndActivityPickerDialog()
-            .preferredColorScheme(.dark)
-    }
-}
+// struct TimeAndActivityPickerDialog_Previews: PreviewProvider {
+//     static var previews: some View {
+//         TimeAndActivityPickerDialog(
+//             initialActivity: .sleep,
+//             initialTime: Date(),
+//             onSave: { _, _ in },
+//             onCancel: {}
+//         )
+//         .preferredColorScheme(.dark)
+//     }
+// }
 
 struct PickerViewWithoutIndicator<Content: View, Selection: Hashable>: View {
     @Binding var selection: Selection

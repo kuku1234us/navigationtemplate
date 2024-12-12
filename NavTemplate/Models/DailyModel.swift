@@ -63,16 +63,13 @@ public class ActivityStack: ObservableObject {
     public func loadActivities() {
         // Prevent multiple concurrent loads
         guard !isLoading else {
-            print(">>>>> ActivityStack: Already loading activities")
             return
         }
         
         isLoading = true
-        print(">>>>> ActivityStack: Starting to load activities")
         
         do {
             let activities = try QuarterFileManager.shared.loadLatestActivities(count: 50)
-            print(">>>>> ActivityStack: Loaded \(activities.count) activities")
             
             // Update on main thread since we're using @Published
             DispatchQueue.main.async {
@@ -80,29 +77,26 @@ public class ActivityStack: ObservableObject {
                 self.isLoading = false
             }
         } catch QuarterFileManager.QuarterFileError.noVaultAccess {
-            print(">>>>> ActivityStack: No vault access available")
+            print("ActivityStack: No vault access available")
             isLoading = false
         } catch {
-            print(">>>>> ActivityStack: Error loading activities: \(error)")
+            print("ActivityStack: Error loading activities: \(error)")
             isLoading = false
         }
     }
     
     public func pushActivity(_ item: ActivityItem) {
-        print(">>>>> ActivityStack: Attempting to push activity: \(item.activityType.rawValue)")
-        
         do {
             try QuarterFileManager.shared.appendActivity(item)
             
             // Only update items if file write was successful
             DispatchQueue.main.async {
                 self.items.append(item)
-                print(">>>>> ActivityStack: Successfully added activity to stack")
             }
         } catch QuarterFileManager.QuarterFileError.noVaultAccess {
-            print(">>>>> ActivityStack: Cannot push activity - no vault access")
+            print("ActivityStack: Cannot push activity - no vault access")
         } catch {
-            print(">>>>> ActivityStack: Error pushing activity: \(error)")
+            print("ActivityStack: Error pushing activity: \(error)")
         }
     }
     
@@ -119,7 +113,6 @@ public class ActivityStack: ObservableObject {
         let item = items.last { item in
             item.activityType == .sleep || item.activityType == .wake
         }
-        print(">>>>> ActivityStack: Last conscious item: \(item?.activityType.rawValue ?? "none")")
         return item
     }
     
@@ -127,7 +120,6 @@ public class ActivityStack: ObservableObject {
         let item = items.last { item in
             item.activityType == .meal
         }
-        print(">>>>> ActivityStack: Last meal item: \(item?.activityType.rawValue ?? "none")")
         return item
     }
     
@@ -154,7 +146,6 @@ public class ActivityStack: ObservableObject {
     
     // Get all items for display
     public var allItems: [ActivityItem] {
-        print(">>>>> ActivityStack: Returning \(items.count) items")
         return items
     }
 } 
