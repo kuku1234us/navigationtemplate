@@ -1,4 +1,5 @@
 import SwiftUI
+import NavTemplateShared
 
 struct ActivitiesMenu: View {
     let onSelect: (ActivityType) -> Void

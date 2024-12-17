@@ -1,36 +1,39 @@
 import SwiftUI
+import NavTemplateShared
 
 struct TimeAndActivityPickerDialog: View {
-    // let initialActivity: ActivityType
-    // let initialTime: Date
-    // let onSave: (ActivityType, Date) -> Void
-    // let onCancel: () -> Void
+    let editingItem: ActivityItem  // Add reference to original item
+    let onSave: (ActivityItem, ActivityType, Date) -> Void  // Pass original item in callback
     
-    @State private var selectedActivity: Activity = Activity(type: .sleep)
-    @State private var selectedHour: Int = 0   
-    @State private var selectedMinute: Int = 0
+    @State private var selectedActivity: Activity
+    @State private var selectedHour: Int
+    @State private var selectedMinute: Int
     
-    // init(
-    //     initialActivity: ActivityType,
-    //     initialTime: Date,
-    //     onSave: @escaping (ActivityType, Date) -> Void,
-    //     onCancel: @escaping () -> Void
-    // ) {
-    //     self.initialActivity = initialActivity
-    //     self.initialTime = initialTime
-    //     self.onSave = onSave
-    //     self.onCancel = onCancel
+    init(
+        editingItem: ActivityItem,
+        onSave: @escaping (ActivityItem, ActivityType, Date) -> Void
+    ) {
+        self.editingItem = editingItem
+        self.onSave = onSave
         
-    //     let calendar = Calendar.current
-    //     _selectedActivity = State(initialValue: Activity(type: initialActivity))
-    //     _selectedHour = State(initialValue: calendar.component(.hour, from: initialTime))
-    //     _selectedMinute = State(initialValue: calendar.component(.minute, from: initialTime))
-    // }
+        let calendar = Calendar.current
+        _selectedActivity = State(initialValue: Activity(type: editingItem.activityType))
+        _selectedHour = State(initialValue: calendar.component(.hour, from: editingItem.activityTime))
+        _selectedMinute = State(initialValue: calendar.component(.minute, from: editingItem.activityTime))
+    }
+    
+    private func createSelectedDate() -> Date {
+        let calendar = Calendar.current
+        var components = calendar.dateComponents([.year, .month, .day], from: editingItem.activityTime)
+        components.hour = selectedHour
+        components.minute = selectedMinute
+        return calendar.date(from: components) ?? editingItem.activityTime
+    }
     
     private let activities: [Activity] = ActivityType.allCases.map { Activity(type: $0) }
     
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             HStack(spacing: 0) {
                 // Activity Picker
                 ActivityPicker(selection: $selectedActivity, activities: activities)
@@ -57,9 +60,29 @@ struct TimeAndActivityPickerDialog: View {
             .cornerRadius(12)
             .shadow(radius: 10)
             .frame(maxWidth: 350)
+            
+            Button(action: {
+                let selectedDate = createSelectedDate()
+                onSave(editingItem, selectedActivity.type, selectedDate)
+            })
+            {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color("ButtonBg").opacity(0.25))
+                        .frame(maxWidth: 300)
+                        .frame(height: 44)
+                        .backgroundBlur(radius: 10, opaque: true)
+                        .innerShadow(shape: RoundedRectangle(cornerRadius: 12), color: Color.bottomSheetBorderMiddle , lineWidth: 1, offsetX: 0, offsetY: 1, blur: 0, blendMode: .overlay, opacity: 1)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(Color("Accent"))
+                }
+            }
+            .padding(.bottom)
         }
         .withTransparentCardStyle()
-        
     }    
 }
 

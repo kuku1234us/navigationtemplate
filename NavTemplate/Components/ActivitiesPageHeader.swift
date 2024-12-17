@@ -1,4 +1,5 @@
 import SwiftUI
+import NavTemplateShared
 
 struct ActivitiesPageHeader: View {
     let navigationManager: NavigationManager?

@@ -1,4 +1,5 @@
 import SwiftUI
+import NavTemplateShared
 
 struct ActivityItemView: View {
     let item: ActivityItem

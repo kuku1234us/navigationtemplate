@@ -40,11 +40,6 @@ struct HomePage: Page {
         AnyView(
             ViewWithBottomMenu(items: [
                 MenuBarItem(
-                    unselectedIcon: "house",
-                    selectedIcon: "house.fill",
-                    targetView: DashboardLinksView(navigationManager: navigationManager).makeView()
-                ),
-                MenuBarItem(
                     unselectedIcon: "sun.horizon",
                     selectedIcon: "sun.horizon.fill",
                     targetView: AnyView(
@@ -53,6 +48,12 @@ struct HomePage: Page {
                         )
                     )
                 ),
+                MenuBarItem(
+                    unselectedIcon: "house",
+                    selectedIcon: "house.fill",
+                    targetView: DashboardLinksView(navigationManager: navigationManager).makeView()
+                ),
+                
                 MenuBarItem(
                     unselectedIcon: "book",
                     selectedIcon: "book.fill",
@@ -78,9 +79,7 @@ struct HomePage: Page {
                     unselectedIcon: "folder",
                     selectedIcon: "folder.fill",
                     targetView: AnyView(
-                        iCloudPage(
-                            navigationManager: navigationManager
-                        )
+                        iCloudPage()
                     )
                 )
             ])

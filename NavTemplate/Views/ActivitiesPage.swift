@@ -1,4 +1,5 @@
 import SwiftUI
+import NavTemplateShared
 
 struct ActivitiesPage: Page {
     var navigationManager: NavigationManager?
@@ -16,6 +17,35 @@ struct ActivitiesPage: Page {
     @State private var editingItemFrame: CGRect = .zero
     @State private var dialogOffset: CGSize = .zero
     @State private var dialogRect: CGRect = .zero // Track dialog rect
+    
+    @State private var lastUpdateTime: TimeInterval = 0
+    
+    private let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+    
+    @Environment(\.scenePhase) private var scenePhase
+    
+    private func setupDefaultsObserver() {
+        // Observe UserDefaults changes
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: defaults,
+            queue: .main
+        ) { _ in
+            if let updateTime = defaults?.double(forKey: "LastActivityUpdate"),
+               updateTime > lastUpdateTime {
+                lastUpdateTime = updateTime
+                updateStateFromStack()
+                activityStack.loadActivities()  // Reload data
+            }
+        }
+    }
+    
+    var body: some View {
+        makeMainContent()
+            .onAppear {
+                setupDefaultsObserver()
+            }
+    }
     
     private func updateStateFromStack() {
         if let lastConscious = activityStack.getLastConsciousItem() {
@@ -38,6 +68,7 @@ struct ActivitiesPage: Page {
         
         // Push activity and update states
         activityStack.pushActivity(newActivity)
+        activityStack.rerenderWidget()
         
         // Update states immediately for UI responsiveness
         switch activity {
@@ -50,6 +81,9 @@ struct ActivitiesPage: Page {
             
         case .exercise:
             break
+            
+        @unknown default:
+            print("Unknown activity type: \(activity.rawValue)")
         }
     }
     
@@ -59,7 +93,6 @@ struct ActivitiesPage: Page {
 
         // Start MyDialog at the item's frame
         dialogRect = frame
-        print("Dialog rect: \(dialogRect)")
         showingEditDialog = true
 
         // Animate to final position and size (center of screen, 400x300)
@@ -73,9 +106,85 @@ struct ActivitiesPage: Page {
             height: finalHeight
         )
 
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             dialogRect = finalRect
         }
+    }
+    
+    private func dismissDialog() {
+        // First animate back to original position and size
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            dialogRect = editingItemFrame
+        }
+        
+        // Remove dialog after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                showingEditDialog = false
+            }
+        }
+    }
+    
+    private func handleUndo(item: ActivityItem) {
+        // First remove the item
+        activityStack.removeActivity(item)
+        activityStack.rerenderWidget()
+        
+        // Update states based on what's left in the stack
+        DispatchQueue.main.async {
+            if item.activityType == .sleep || item.activityType == .wake {
+                // Get the latest conscious state after removal
+                if let lastConscious = activityStack.getLastConsciousItem() {
+                    withAnimation(.easeInOut) {
+                        self.consciousState = lastConscious.activityType
+                        self.lastConsciousTime = lastConscious.activityTime
+                    }
+                } else {
+                    // No conscious states left, reset to default
+                    withAnimation(.easeInOut) {
+                        self.consciousState = .wake
+                        self.lastConsciousTime = nil
+                    }
+                }
+            }
+            
+            if item.activityType == .meal {
+                // Get the latest meal time after removal
+                if let lastMeal = activityStack.getLastMealItem() {
+                    self.lastMealTime = lastMeal.activityTime
+                } else {
+                    // No meals left
+                    self.lastMealTime = nil
+                }
+            }
+        }
+    }
+    
+    private func handleActivitySave(originalItem: ActivityItem, newType: ActivityType, newTime: Date) {
+        activityStack.updateActivity(originalItem, withType: newType, newTime: newTime)
+        activityStack.rerenderWidget()
+        
+        // Update states if needed
+        switch newType {
+        case .sleep, .wake:
+            // Only update conscious state if this is the latest sleep/wake activity
+            if originalItem.id == activityStack.getLastConsciousItem()?.id {
+                consciousState = newType
+                lastConsciousTime = newTime
+            }
+        case .meal:
+            // Only update meal time if this is the latest meal
+            if originalItem.id == activityStack.getLastMealItem()?.id {
+                lastMealTime = newTime
+            }
+        case .exercise:
+            break
+            
+        @unknown default:
+            print("Unknown activity type: \(newType.rawValue)")
+        }
+        
+        dismissDialog()
     }
     
     func makeMainContent() -> AnyView {
@@ -104,9 +213,7 @@ struct ActivitiesPage: Page {
                     HStack(spacing: 0) {
                         ActivityListView(
                             activityStack: activityStack,
-                            onUndo: { item in
-                                print("Undo activity: \(item.activityType.rawValue)")
-                            },
+                            onUndo: handleUndo,
                             onEdit: handleEdit
                         )
                         .frame(maxWidth: .infinity)
@@ -128,27 +235,28 @@ struct ActivitiesPage: Page {
                         .opacity(0.3)
                         .ignoresSafeArea()
                         .transition(.opacity)
+                        .onTapGesture {
+                            dismissDialog()
+                        }
                     
-                    TimeAndActivityPickerDialog()
-                        .frame(width: dialogRect.width, height: dialogRect.height)
-                        .position(x: dialogRect.midX, y: dialogRect.midY)                    
-                    // (
-                        // initialActivity: editingItem?.activityType ?? .sleep,
-                        // initialTime: editingItem?.activityTime ?? Date(),
-                        // onSave: { activity, time in
-                        //     // TODO: Handle edit
-                        //     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        //         showingEditDialog = false
-                        //     }
-                        // },
-                        // onCancel: {
-                        //     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        //         showingEditDialog = false
-                        //     }
-                        // }
-                    // )
-                    // .offset(dialogOffset)
-                    // .transition(.scale.combined(with: .opacity))
+                    TimeAndActivityPickerDialog(
+                        editingItem: editingItem!,
+                        onSave: handleActivitySave
+                    )
+                    .frame(width: dialogRect.width, height: dialogRect.height)
+                    .position(x: dialogRect.midX, y: dialogRect.midY)
+                    .allowsHitTesting(showingEditDialog)
+                }
+            }
+            .onChange(of: scenePhase) { newPhase in
+                if newPhase == .active {
+                    isLoading = true
+                    print("ActivitiesPage: App entered foreground")
+                    activityStack.loadActivities()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        updateStateFromStack()
+                        isLoading = false
+                    }
                 }
             }
             .onAppear {

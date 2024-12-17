@@ -2,11 +2,11 @@
 
 import SwiftUI
 
-enum ColorUtilities {
+public enum ColorUtilities {
     /// Creates a Color from a hex string
     /// - Parameter hex: Hex string in format "#RRGGBB" or "RRGGBB"
     /// - Returns: SwiftUI Color
-    static func fromHex(_ hex: String) -> Color {
+    public static func fromHex(_ hex: String) -> Color {
         let hex = hex.trimmingCharacters(in: .alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&int)
@@ -29,7 +29,7 @@ enum ColorUtilities {
     }
 } 
 
-extension Color {
+public extension Color {
     static let bottomSheetBorderMiddle = LinearGradient(
         gradient: Gradient(stops: [
             .init(color: .white, location: 0),
@@ -40,7 +40,7 @@ extension Color {
     )
 }
 
-extension View {
+public extension View {
     func innerShadow<S: Shape, SS: ShapeStyle>(
         shape: S,
         color: SS,
@@ -51,41 +51,60 @@ extension View {
         blendMode: BlendMode = .normal,
         opacity: Double = 1
     ) -> some View {
-        self
-            .overlay(
-                shape
-                    .stroke(color, lineWidth: lineWidth)
-                    .blendMode(blendMode)
-                    .offset(x: offsetX, y: offsetY)
-                    .blur(radius: blur)
-                    .mask(shape)
-                    .opacity(opacity)
-            )
+        return self.overlay(
+            shape
+                .stroke(color, lineWidth: lineWidth)
+                .blendMode(blendMode)
+                .offset(x: offsetX, y: offsetY)
+                .blur(radius: blur)
+                .mask(shape)
+                .opacity(opacity)
+        )
     }
 }
 
-struct SafeAreaTop: View {
-    var body: some View {
-        GeometryReader { geometry in
+public struct SafeAreaTop: View {
+    public init() {}
+    
+    public var body: some View {
+        return GeometryReader { geometry in
             Color.clear
                 .frame(height: UIApplication.shared.keyWindow?.safeAreaInsets.top ?? 0)
         }
     }
 }
 
-extension View {
+public extension View {
     func withSafeAreaTop() -> some View {
-        self.padding(.top, UIApplication.shared.keyWindow?.safeAreaInsets.top ?? 0)
+        return self.padding(.top, UIApplication.shared.keyWindow?.safeAreaInsets.top ?? 0)
     }
-}
-
-extension View {
+    
     func withTransparentCardStyle() -> some View {
-        self
+        return self
             .backgroundBlur(radius: 10, opaque: true)
             .background(Color("SideSheetBg").opacity(0.2))
             .clipShape(RoundedRectangle(cornerRadius: 20))
-            .innerShadow(shape: RoundedRectangle(cornerRadius: 20), color: Color.bottomSheetBorderMiddle , lineWidth: 1, offsetX: 0, offsetY: 1, blur: 0, blendMode: .overlay, opacity: 0.2)
+            .innerShadow(shape: RoundedRectangle(cornerRadius: 20), color: Color.bottomSheetBorderMiddle, lineWidth: 1, offsetX: 0, offsetY: 1, blur: 0, blendMode: .overlay, opacity: 0.2)
             .shadow(radius: 10)
+    }
+
+    func withTransparentCardStyle2() -> some View {
+        return self
+            // .backgroundBlur(radius: 10, opaque: true)
+            .background(Color("SideSheetBg").opacity(0.2))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .innerShadow(shape: RoundedRectangle(cornerRadius: 20), color: Color.bottomSheetBorderMiddle, lineWidth: 1, offsetX: 0, offsetY: 1, blur: 0, blendMode: .overlay, opacity: 0.5)
+            .shadow(radius: 10)
+    }
+
+
+}
+
+extension UIApplication {
+    var keyWindow: UIWindow? {
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
     }
 }

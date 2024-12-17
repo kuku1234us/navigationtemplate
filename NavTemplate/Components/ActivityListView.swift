@@ -1,4 +1,5 @@
 import SwiftUI
+import NavTemplateShared
 
 struct ActivityListView: View {
     @ObservedObject var activityStack: ActivityStack

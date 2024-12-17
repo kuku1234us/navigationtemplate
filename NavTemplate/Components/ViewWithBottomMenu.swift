@@ -9,11 +9,11 @@ struct MenuBarItem {
 struct ViewWithBottomMenu: View {
     let items: [MenuBarItem]
     @State private var selectedIndex: Int = 0
+    @State private var bounceValues: [Int] = Array(repeating: 0, count: 10)  // Support up to 10 menu items
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-
                 items[selectedIndex].targetView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .animation(.easeInOut(duration: 0.1), value: selectedIndex)
@@ -27,6 +27,7 @@ struct ViewWithBottomMenu: View {
                             Button(action: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0.6)) {
                                     selectedIndex = index
+                                    bounceValues[index] += 1  // Only increment for selected icon
                                 }
                             }) {
                                 VStack {
@@ -46,11 +47,11 @@ struct ViewWithBottomMenu: View {
                                             .foregroundColor(selectedIndex == index ? Color("Accent") : Color("MyTertiary"))
                                             .scaleEffect(selectedIndex == index ? 1.15 : 1.0)
                                             .contentTransition(.symbolEffect(.replace.offUp.byLayer))
+                                            .symbolEffect(.wiggle.left.byLayer, value: bounceValues[index])
                                     }
                                     .frame(width: 50, height: 50)
                                 }
                             }
-                            // .animation(.easeInOut(duration: 0.1), value: selectedIndex)
                             Spacer()
                         }
                     }
