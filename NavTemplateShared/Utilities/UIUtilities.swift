@@ -88,6 +88,15 @@ public extension View {
             .shadow(radius: 10)
     }
 
+    func withTransparentRectangleStyle() -> some View {
+        return self
+            .backgroundBlur(radius: 10, opaque: true)
+            .background(Color("SideSheetBg").opacity(0.2))
+            .clipShape(Rectangle())
+            .innerShadow(shape: Rectangle(), color: Color.bottomSheetBorderMiddle, lineWidth: 1, offsetX: 0, offsetY: 1, blur: 0, blendMode: .overlay, opacity: 0.2)
+            .shadow(radius: 10)
+    }
+
     func withTransparentCardStyle2() -> some View {
         return self
             // .backgroundBlur(radius: 10, opaque: true)

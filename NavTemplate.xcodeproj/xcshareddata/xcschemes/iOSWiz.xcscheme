@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "855E4EA52CFC3B70002E12D4"
-               BuildableName = "NavTemplate.app"
-               BlueprintName = "NavTemplate"
+               BuildableName = "iOSWiz.app"
+               BlueprintName = "iOSWiz"
                ReferencedContainer = "container:NavTemplate.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,8 +45,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "855E4EA52CFC3B70002E12D4"
-            BuildableName = "NavTemplate.app"
-            BlueprintName = "NavTemplate"
+            BuildableName = "iOSWiz.app"
+            BlueprintName = "iOSWiz"
             ReferencedContainer = "container:NavTemplate.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,8 +62,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "855E4EA52CFC3B70002E12D4"
-            BuildableName = "NavTemplate.app"
-            BlueprintName = "NavTemplate"
+            BuildableName = "iOSWiz.app"
+            BlueprintName = "iOSWiz"
             ReferencedContainer = "container:NavTemplate.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

@@ -248,7 +248,7 @@ struct ActivitiesPage: Page {
                     .allowsHitTesting(showingEditDialog)
                 }
             }
-            .onChange(of: scenePhase) { newPhase in
+            .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .active {
                     isLoading = true
                     print("ActivitiesPage: App entered foreground")

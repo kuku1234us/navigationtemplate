@@ -11,7 +11,7 @@
 		8507D1E62D0CBEF600DC7F4F /* NavTemplateShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		855F43BB2D0BFA7300593B9A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43BA2D0BFA7000593B9A /* WidgetKit.framework */; };
 		855F43BD2D0BFA7300593B9A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43BC2D0BFA7300593B9A /* SwiftUI.framework */; };
-		855F43CE2D0BFA7500593B9A /* NavWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 855F43B82D0BFA7000593B9A /* NavWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		855F43CE2D0BFA7500593B9A /* ActivitiesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 855F43B82D0BFA7000593B9A /* ActivitiesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		855F43E42D0CA0C700593B9A /* NavTemplateShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; };
 		855F43EF2D0CA0C700593B9A /* NavTemplateShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; };
 		855F43F02D0CA0C700593B9A /* NavTemplateShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -87,7 +87,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				855F43CE2D0BFA7500593B9A /* NavWidgetExtension.appex in Embed Foundation Extensions */,
+				855F43CE2D0BFA7500593B9A /* ActivitiesWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -106,10 +106,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		855E4EA62CFC3B70002E12D4 /* NavTemplate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NavTemplate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		855E4EA62CFC3B70002E12D4 /* iOSWiz.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSWiz.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		855E4EB62CFC3B72002E12D4 /* NavTemplateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NavTemplateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		855E4EC02CFC3B72002E12D4 /* NavTemplateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NavTemplateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		855F43B82D0BFA7000593B9A /* NavWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NavWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		855F43B82D0BFA7000593B9A /* ActivitiesWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ActivitiesWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		855F43BA2D0BFA7000593B9A /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		855F43BC2D0BFA7300593B9A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		855F43D42D0BFB9B00593B9A /* NavWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NavWidgetExtension.entitlements; sourceTree = "<group>"; };
@@ -118,12 +118,12 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		855F43D22D0BFA7500593B9A /* Exceptions for "NavWidget" folder in "NavWidgetExtension" target */ = {
+		855F43D22D0BFA7500593B9A /* Exceptions for "NavWidget" folder in "ActivitiesWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 855F43B72D0BFA7000593B9A /* NavWidgetExtension */;
+			target = 855F43B72D0BFA7000593B9A /* ActivitiesWidgetExtension */;
 		};
 		855F43F12D0CA0C700593B9A /* Exceptions for "NavTemplateShared" folder in "NavTemplateShared" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -153,7 +153,7 @@
 		855F43BE2D0BFA7300593B9A /* NavWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				855F43D22D0BFA7500593B9A /* Exceptions for "NavWidget" folder in "NavWidgetExtension" target */,
+				855F43D22D0BFA7500593B9A /* Exceptions for "NavWidget" folder in "ActivitiesWidgetExtension" target */,
 			);
 			path = NavWidget;
 			sourceTree = "<group>";
@@ -242,10 +242,10 @@
 		855E4EA72CFC3B70002E12D4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				855E4EA62CFC3B70002E12D4 /* NavTemplate.app */,
+				855E4EA62CFC3B70002E12D4 /* iOSWiz.app */,
 				855E4EB62CFC3B72002E12D4 /* NavTemplateTests.xctest */,
 				855E4EC02CFC3B72002E12D4 /* NavTemplateUITests.xctest */,
-				855F43B82D0BFA7000593B9A /* NavWidgetExtension.appex */,
+				855F43B82D0BFA7000593B9A /* ActivitiesWidgetExtension.appex */,
 				855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */,
 				855F43E32D0CA0C700593B9A /* NavTemplateSharedTests.xctest */,
 			);
@@ -274,9 +274,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		855E4EA52CFC3B70002E12D4 /* NavTemplate */ = {
+		855E4EA52CFC3B70002E12D4 /* iOSWiz */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 855E4ECA2CFC3B72002E12D4 /* Build configuration list for PBXNativeTarget "NavTemplate" */;
+			buildConfigurationList = 855E4ECA2CFC3B72002E12D4 /* Build configuration list for PBXNativeTarget "iOSWiz" */;
 			buildPhases = (
 				855E4EA22CFC3B70002E12D4 /* Sources */,
 				855E4EA32CFC3B70002E12D4 /* Frameworks */,
@@ -293,11 +293,11 @@
 			fileSystemSynchronizedGroups = (
 				855E4EA82CFC3B70002E12D4 /* NavTemplate */,
 			);
-			name = NavTemplate;
+			name = iOSWiz;
 			packageProductDependencies = (
 			);
 			productName = NavTemplate;
-			productReference = 855E4EA62CFC3B70002E12D4 /* NavTemplate.app */;
+			productReference = 855E4EA62CFC3B70002E12D4 /* iOSWiz.app */;
 			productType = "com.apple.product-type.application";
 		};
 		855E4EB52CFC3B72002E12D4 /* NavTemplateTests */ = {
@@ -346,9 +346,9 @@
 			productReference = 855E4EC02CFC3B72002E12D4 /* NavTemplateUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		855F43B72D0BFA7000593B9A /* NavWidgetExtension */ = {
+		855F43B72D0BFA7000593B9A /* ActivitiesWidgetExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 855F43D32D0BFA7500593B9A /* Build configuration list for PBXNativeTarget "NavWidgetExtension" */;
+			buildConfigurationList = 855F43D32D0BFA7500593B9A /* Build configuration list for PBXNativeTarget "ActivitiesWidgetExtension" */;
 			buildPhases = (
 				855F43B42D0BFA7000593B9A /* Sources */,
 				855F43B52D0BFA7000593B9A /* Frameworks */,
@@ -363,11 +363,11 @@
 			fileSystemSynchronizedGroups = (
 				855F43BE2D0BFA7300593B9A /* NavWidget */,
 			);
-			name = NavWidgetExtension;
+			name = ActivitiesWidgetExtension;
 			packageProductDependencies = (
 			);
 			productName = NavWidgetExtension;
-			productReference = 855F43B82D0BFA7000593B9A /* NavWidgetExtension.appex */;
+			productReference = 855F43B82D0BFA7000593B9A /* ActivitiesWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		855F43D92D0CA0C400593B9A /* NavTemplateShared */ = {
@@ -464,10 +464,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				855E4EA52CFC3B70002E12D4 /* NavTemplate */,
+				855E4EA52CFC3B70002E12D4 /* iOSWiz */,
 				855E4EB52CFC3B72002E12D4 /* NavTemplateTests */,
 				855E4EBF2CFC3B72002E12D4 /* NavTemplateUITests */,
-				855F43B72D0BFA7000593B9A /* NavWidgetExtension */,
+				855F43B72D0BFA7000593B9A /* ActivitiesWidgetExtension */,
 				855F43D92D0CA0C400593B9A /* NavTemplateShared */,
 				855F43E22D0CA0C700593B9A /* NavTemplateSharedTests */,
 			);
@@ -572,17 +572,17 @@
 		};
 		855E4EB82CFC3B72002E12D4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 855E4EA52CFC3B70002E12D4 /* NavTemplate */;
+			target = 855E4EA52CFC3B70002E12D4 /* iOSWiz */;
 			targetProxy = 855E4EB72CFC3B72002E12D4 /* PBXContainerItemProxy */;
 		};
 		855E4EC22CFC3B72002E12D4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 855E4EA52CFC3B70002E12D4 /* NavTemplate */;
+			target = 855E4EA52CFC3B70002E12D4 /* iOSWiz */;
 			targetProxy = 855E4EC12CFC3B72002E12D4 /* PBXContainerItemProxy */;
 		};
 		855F43CD2D0BFA7500593B9A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 855F43B72D0BFA7000593B9A /* NavWidgetExtension */;
+			target = 855F43B72D0BFA7000593B9A /* ActivitiesWidgetExtension */;
 			targetProxy = 855F43CC2D0BFA7500593B9A /* PBXContainerItemProxy */;
 		};
 		855F43E62D0CA0C700593B9A /* PBXTargetDependency */ = {
@@ -592,7 +592,7 @@
 		};
 		855F43E82D0CA0C700593B9A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 855E4EA52CFC3B70002E12D4 /* NavTemplate */;
+			target = 855E4EA52CFC3B70002E12D4 /* iOSWiz */;
 			targetProxy = 855F43E72D0CA0C700593B9A /* PBXContainerItemProxy */;
 		};
 		855F43EE2D0CA0C700593B9A /* PBXTargetDependency */ = {
@@ -865,7 +865,7 @@
 				DEVELOPMENT_TEAM = U3ZF79B4TR;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NavWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = NavWidget;
+				INFOPLIST_KEY_CFBundleDisplayName = ActivitiesWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -894,7 +894,7 @@
 				DEVELOPMENT_TEAM = U3ZF79B4TR;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NavWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = NavWidget;
+				INFOPLIST_KEY_CFBundleDisplayName = ActivitiesWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1028,7 +1028,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		855E4ECA2CFC3B72002E12D4 /* Build configuration list for PBXNativeTarget "NavTemplate" */ = {
+		855E4ECA2CFC3B72002E12D4 /* Build configuration list for PBXNativeTarget "iOSWiz" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				855E4ECB2CFC3B72002E12D4 /* Debug */,
@@ -1055,7 +1055,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		855F43D32D0BFA7500593B9A /* Build configuration list for PBXNativeTarget "NavWidgetExtension" */ = {
+		855F43D32D0BFA7500593B9A /* Build configuration list for PBXNativeTarget "ActivitiesWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				855F43D02D0BFA7500593B9A /* Debug */,

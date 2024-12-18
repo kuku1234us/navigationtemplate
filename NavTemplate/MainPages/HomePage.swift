@@ -49,6 +49,15 @@ struct HomePage: Page {
                     )
                 ),
                 MenuBarItem(
+                    unselectedIcon: "checklist",
+                    selectedIcon: "checklist.checked",
+                    targetView: AnyView(
+                        TasksPage(
+                            navigationManager: navigationManager
+                        )
+                    )
+                ),
+                MenuBarItem(
                     unselectedIcon: "house",
                     selectedIcon: "house.fill",
                     targetView: DashboardLinksView(navigationManager: navigationManager).makeView()
@@ -62,16 +71,6 @@ struct HomePage: Page {
                             navigationManager: navigationManager,
                             title: "Sample Book",
                             author: "John Doe"
-                        )
-                    )
-                ),
-                MenuBarItem(
-                    unselectedIcon: "calendar",
-                    selectedIcon: "calendar.circle.fill",
-                    targetView: AnyView(
-                        DailyPage(
-                            date: Date(),
-                            navigationManager: navigationManager
                         )
                     )
                 ),

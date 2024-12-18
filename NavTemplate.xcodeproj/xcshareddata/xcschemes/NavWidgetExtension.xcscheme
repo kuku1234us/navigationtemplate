@@ -2,7 +2,7 @@
 <Scheme
    LastUpgradeVersion = "1610"
    wasCreatedForAppExtension = "YES"
-   version = "2.0">
+   version = "2.2">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
@@ -17,8 +17,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "855F43B72D0BFA7000593B9A"
-               BuildableName = "NavWidgetExtension.appex"
-               BlueprintName = "NavWidgetExtension"
+               BuildableName = "ActivitiesWidgetExtension.appex"
+               BlueprintName = "ActivitiesWidgetExtension"
                ReferencedContainer = "container:NavTemplate.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -31,10 +31,19 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "855E4EA52CFC3B70002E12D4"
-               BuildableName = "NavTemplate.app"
-               BlueprintName = "NavTemplate"
+               BuildableName = "iOSWiz.app"
+               BlueprintName = "iOSWiz"
                ReferencedContainer = "container:NavTemplate.xcodeproj">
             </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <AutocreatedTestPlanReference>
+            </AutocreatedTestPlanReference>
          </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
@@ -57,16 +66,26 @@
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES"
       launchAutomaticallySubstyle = "2">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <RemoteRunnable
+         runnableDebuggingMode = "2"
+         BundleIdentifier = "com.apple.springboard">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "855F43B72D0BFA7000593B9A"
+            BuildableName = "ActivitiesWidgetExtension.appex"
+            BlueprintName = "ActivitiesWidgetExtension"
+            ReferencedContainer = "container:NavTemplate.xcodeproj">
+         </BuildableReference>
+      </RemoteRunnable>
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "855E4EA52CFC3B70002E12D4"
-            BuildableName = "NavTemplate.app"
-            BlueprintName = "NavTemplate"
+            BuildableName = "iOSWiz.app"
+            BlueprintName = "iOSWiz"
             ReferencedContainer = "container:NavTemplate.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "_XCWidgetKind"
@@ -97,8 +116,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "855E4EA52CFC3B70002E12D4"
-            BuildableName = "NavTemplate.app"
-            BlueprintName = "NavTemplate"
+            BuildableName = "iOSWiz.app"
+            BlueprintName = "iOSWiz"
             ReferencedContainer = "container:NavTemplate.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

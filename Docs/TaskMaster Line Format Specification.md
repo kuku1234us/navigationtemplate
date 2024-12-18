@@ -3,25 +3,24 @@ parent: "[[TaskMaster]]"
 banner: https://www.amitree.com/wp-content/uploads/2021/08/the-pros-and-cons-of-paper-to-do-lists.jpeg
 banner_y: 0.237
 ---
-
-# Overview
+## Overview
 
 The TaskMaster line format is designed to be a unified structure for task management across Obsidian and iOS-based platforms. This specification ensures consistency, flexibility, and compatibility with markdown-based tools and synchronization systems.
 
 ---
 
-# Line Format Syntax
+## Line Format Syntax
 
 All tasks are listed inside a **task callout** at the beginning of a Project file:
 
 ```markdown
 > [!task]+ Tasks
-> - [ ] Task Name (due:: YYYY-MM-DD) (tags:: #tag1 #tag2) <span class="priority">PriorityLevel</span><span class="taskId">XXXXXXXXXX</span>
+> - [ ] Task Name (due:: YYYY-MM-DD) #tag1 #tag2 <span class="priority">PriorityLevel</span><span class="createTime">UNIX_TIMESTAMP</span>
 ```
 
-## Elements
+### Elements
 
-1. **Checkbox (`- [ ]`)**:
+1. **Checkbox (****`- [ ]`****)**:
 
    - **Purpose**: Tracks task completion status.
    - `[ ]` for incomplete tasks.
@@ -37,7 +36,7 @@ All tasks are listed inside a **task callout** at the beginning of a Project fil
    - **Purpose**: Optional due date field for deadlines.
    - Example: `(due:: 2024-12-31)`.
 
-4. **(tags:: #tag1 #tag2)**:
+4. ** #tag1 #tag2**:
 
    - **Purpose**: Custom tags for classification.
    - Examples: `#computers`, `#review`.
@@ -48,25 +47,25 @@ All tasks are listed inside a **task callout** at the beginning of a Project fil
    - Levels: `urgent`, `high`, `normal`, `low`.
    - Example: `<span class="priority">High</span>`.
 
-6. **XXXXXXXXXX**:
+6. **createTime**:
 
-   - **Purpose**: Unique identifier for tasks.
-   - **CSS Customization**: `.taskId` can be hidden using CSS.
+   - **Purpose**: Record of the time the task is created. Also serves as an unique identifier for the task.
+   - **Implementation**: The Unix timestamp of the task's creation time will serve as the unique ID, hidden with CSS when needed.
 
 ---
 
-# Example Tasks
+## Example Tasks
 
 ```markdown
 > [!task]+ Tasks
-> - [ ] Write a blog post on TaskMaster format (due:: 2024-12-20) (tags:: #writing #test) <span class="priority">High</span><span class="taskId">T001</span>
-> - [x] Finalize task management system format (due:: 2024-12-15) (tags:: #design) <span class="priority">Normal</span><span class="taskId">T002</span>
-> - [ ] Review user feedback (due:: 2024-12-22) (tags:: #review) <span class="priority">Low</span><span class="taskId">T003</span>
+> - [ ] Write a blog post on TaskMaster format (due:: 2024-12-20) #tag1 #tag2 <span class="priority">High</span><span class="createTime">1703376000</span>
+> - [x] Finalize task management system format (due:: 2024-12-15) #design <span class="priority">Normal</span><span class="createTime">1702944000</span>
+> - [ ] Review user feedback (due:: 2024-12-22) #review <span class="priority">Low</span><span class="createTime">1703894400</span>
 ```
 
 ---
 
-# Usage Guidelines
+## Usage Guidelines
 
 1. **Field Order**:
 
@@ -82,17 +81,9 @@ All tasks are listed inside a **task callout** at the beginning of a Project fil
 
 ---
 
-# CSS Snippet for Customization
+## CSS Snippet for Customization
 
-## Task ID Hidden
-
-```css
-.taskId {
-  display: none;
-}
-```
-
-## Priority Levels
+### Priority Levels
 
 ```css
 .priority {
@@ -105,36 +96,35 @@ All tasks are listed inside a **task callout** at the beginning of a Project fil
 }
 .priority[style*="urgent"] {
   background-color: red;
-  color: white;
+  color: #f5624c;
 }
 .priority[style*="high"] {
   background-color: orange;
-  color: white;
+  color: #ffb238;
 }
 .priority[style*="normal"] {
   background-color: yellow;
-  color: black;
+  color: #3e92cc;
 }
 .priority[style*="low"] {
   background-color: green;
-  color: white;
+  color: #596873;
+}
+
+.createTime {
+  display: none;
 }
 ```
 
 ---
 
-# Future Enhancements
+## Future Enhancements
 
 1. **Subtasks**:
-
    - Introduce nested task support.
-
 2. **Task Relationships**:
-
    - Enable parent-child task dependencies.
-
 3. **Advanced Scheduling**:
-
    - Add recurring task syntax or reminders.
 
 ---

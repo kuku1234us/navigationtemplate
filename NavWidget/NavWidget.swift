@@ -13,7 +13,7 @@ import NavTemplateShared
 struct Provider: TimelineProvider {
     // Configuration for timeline generation
     private let numIntervals = 60
-    private let minPerInterval = 1
+    private let minPerInterval = 5
     
     func placeholder(in context: Context) -> SimpleEntry {
         SimpleEntry(date: Date(), consciousState: .wake, lastActivityType: nil, lastConsciousTime: nil, lastMealTime: nil, isStaticUpdate: false)
