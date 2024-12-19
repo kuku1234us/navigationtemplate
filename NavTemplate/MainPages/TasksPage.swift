@@ -12,6 +12,10 @@ struct TasksPage: Page {
         // TODO: Implement edit modal
     }
     
+    private func handleTaskDelete(_ task: TaskItem) {
+        taskModel.deleteTask(task)
+    }
+    
     func makeMainContent() -> AnyView {
         AnyView(
             ZStack {
@@ -56,7 +60,8 @@ struct TasksPage: Page {
                     // Task List
                     TaskListView(
                         tasks: taskModel.tasks,
-                        onEdit: handleTaskEdit
+                        onEdit: handleTaskEdit,
+                        onDelete: handleTaskDelete
                     )
                     .padding(.top)
                 }

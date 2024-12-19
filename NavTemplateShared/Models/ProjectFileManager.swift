@@ -53,11 +53,11 @@ class ProjectFileManager {
     }
     
     func parseTasksFromFile(_ url: URL) throws -> [TaskItem]? {
-        
         let content = try String(contentsOf: url, encoding: .utf8)
             .replacingOccurrences(of: "\0", with: "\n")
         
         let projectName = url.deletingPathExtension().lastPathComponent
+        let projectPath = url.path  // Get full path
         
         var tasks: [TaskItem] = []
         
@@ -66,7 +66,7 @@ class ProjectFileManager {
             
             // Check if line is a task
             if let taskLine = self?.extractTaskLine(line) {
-                if let task = self?.parseTaskLine(taskLine, projectName: projectName) {
+                if let task = self?.parseTaskLine(taskLine, projectName: projectName, projectPath: projectPath) {
                     tasks.append(task)
                 }
             }
@@ -100,7 +100,7 @@ class ProjectFileManager {
         return nil
     }
     
-    private func parseTaskLine(_ line: String, projectName: String) -> TaskItem? {
+    private func parseTaskLine(_ line: String, projectName: String, projectPath: String) -> TaskItem? {
         // Extract status character between [ and ]
         let statusPattern = "\\[(.?)\\]"
         let isCompleted: Bool
@@ -191,6 +191,7 @@ class ProjectFileManager {
             isCompleted: isCompleted,
             priority: priority,
             projectName: projectName,
+            projectFilePath: projectPath,  // Add project path
             dueDate: dueDate,
             tags: tags,
             createTime: createTime
@@ -200,5 +201,45 @@ class ProjectFileManager {
     enum ProjectFileError: Error {
         case noVaultAccess
         case invalidFormat
+    }
+    
+    func removeTask(_ task: TaskItem) throws {
+        let file = URL(fileURLWithPath: task.projectFilePath)
+        try removeTaskFromFile(task, in: file)
+    }
+    
+    private func removeTaskFromFile(_ task: TaskItem, in file: URL) throws {
+        let content = try String(contentsOf: file, encoding: .utf8)
+        var lines = content.components(separatedBy: .newlines)
+        
+        // Find and remove the task line
+        if let index = lines.firstIndex(where: { line in 
+            line.contains("createTime\">\(task.id)<")
+        }) {
+            lines.remove(at: index)
+            let updatedContent = lines.joined(separator: "\n")
+            try updatedContent.write(to: file, atomically: true, encoding: .utf8)
+        }
+    }
+    
+    func updateTaskCompletion(_ task: TaskItem, isCompleted: Bool) throws {
+        let file = URL(fileURLWithPath: task.projectFilePath)
+        let content = try String(contentsOf: file, encoding: .utf8)
+        var lines = content.components(separatedBy: .newlines)
+        
+        // Find and update the task line
+        if let index = lines.firstIndex(where: { line in
+            line.contains("createTime\">\(task.id)<")
+        }) {
+            let line = lines[index]
+            let updatedLine = line.replacingOccurrences(
+                of: "\\[.\\]",
+                with: isCompleted ? "[x]" : "[ ]",
+                options: .regularExpression
+            )
+            lines[index] = updatedLine
+            let updatedContent = lines.joined(separator: "\n")
+            try updatedContent.write(to: file, atomically: true, encoding: .utf8)
+        }
     }
 } 

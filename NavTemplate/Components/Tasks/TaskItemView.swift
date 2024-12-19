@@ -18,14 +18,19 @@ struct CustomCheckbox: View {
 struct TaskItemView: View {
     let task: NavTemplateShared.TaskItem
     let onEdit: () -> Void
+    let onDelete: () -> Void
     @State private var taskName: String
     @State private var isChecked: Bool
     @State private var isEditing: Bool = false
     @State private var editorHeight: CGFloat = 30
+    @StateObject private var taskModel = TaskModel.shared
     
-    init(task: NavTemplateShared.TaskItem, onEdit: @escaping () -> Void) {
+    init(task: NavTemplateShared.TaskItem, 
+         onEdit: @escaping () -> Void,
+         onDelete: @escaping () -> Void) {
         self.task = task
         self.onEdit = onEdit
+        self.onDelete = onDelete
         _taskName = State(initialValue: task.name)
         _isChecked = State(initialValue: task.isCompleted)
     }
@@ -53,6 +58,7 @@ struct TaskItemView: View {
             // 1. Custom Checkbox
             CustomCheckbox(isChecked: isChecked) {
                 isChecked.toggle()
+                taskModel.updateTaskCompletion(task, isCompleted: isChecked)
             }
             
             // 2. Task details
@@ -127,16 +133,22 @@ struct TaskItemView: View {
                         .font(.system(size: 16))
                         .foregroundColor(Color("MySecondary"))
                 }
-
+                
                 Spacer()
                 
-                Button(action: {
-                    // TODO: Add delete action
-                }) {
+                Menu {
+                    Button(role: .destructive) {
+                        onDelete()
+                    } label: {
+                        Label("Delete Task", systemImage: "trash")
+                    }
+                } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 16))
                         .foregroundColor(Color("MySecondary"))
                 }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
             }
         }
         .padding(.vertical, 12)

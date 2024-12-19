@@ -8,6 +8,7 @@ public struct TaskItem: Identifiable {
     public var isCompleted: Bool
     public var priority: TaskPriority
     public var projectName: String
+    public var projectFilePath: String
     public var dueDate: Date?
     public var tags: [String]
     public var createTime: Date
@@ -18,6 +19,7 @@ public struct TaskItem: Identifiable {
         isCompleted: Bool,
         priority: TaskPriority,
         projectName: String,
+        projectFilePath: String,
         dueDate: Date? = nil,
         tags: [String] = [],
         createTime: Date
@@ -27,6 +29,7 @@ public struct TaskItem: Identifiable {
         self.isCompleted = isCompleted
         self.priority = priority
         self.projectName = projectName
+        self.projectFilePath = projectFilePath
         self.dueDate = dueDate
         self.tags = tags
         self.createTime = createTime
@@ -59,6 +62,32 @@ public class TaskModel: ObservableObject {
             }
         } catch {
             print("Error loading tasks: \(error)")
+        }
+    }
+    
+    public func deleteTask(_ task: TaskItem) {
+        do {
+            try projectFileManager.removeTask(task)
+            DispatchQueue.main.async {
+                self.tasks.removeAll { $0.id == task.id }
+            }
+        } catch {
+            print("Error deleting task: \(error)")
+        }
+    }
+    
+    public func updateTaskCompletion(_ task: TaskItem, isCompleted: Bool) {
+        do {
+            try projectFileManager.updateTaskCompletion(task, isCompleted: isCompleted)
+            DispatchQueue.main.async {
+                if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                    var updatedTask = task
+                    updatedTask.isCompleted = isCompleted
+                    self.tasks[index] = updatedTask
+                }
+            }
+        } catch {
+            print("Error updating task completion: \(error)")
         }
     }
 } 

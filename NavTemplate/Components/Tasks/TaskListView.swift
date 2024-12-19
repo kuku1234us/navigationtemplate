@@ -32,6 +32,7 @@ struct KeyboardAwareModifier: ViewModifier {
 struct TaskListView: View {
     let tasks: [NavTemplateShared.TaskItem]
     let onEdit: (NavTemplateShared.TaskItem) -> Void
+    let onDelete: (NavTemplateShared.TaskItem) -> Void
     @State private var keyboardHeight: CGFloat = 0
     @State private var editingTaskId: Int64?
     
@@ -42,7 +43,8 @@ struct TaskListView: View {
                     ForEach(tasks, id: \.id) { task in
                         TaskItemView(
                             task: task,
-                            onEdit: { onEdit(task) }
+                            onEdit: { onEdit(task) },
+                            onDelete: { onDelete(task) }
                         )
                         .id(task.id)
                         .onChange(of: task.name) { oldValue, newValue in
