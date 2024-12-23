@@ -1,3 +1,5 @@
+// NavTemplate/MainPages/TasksPage.swift
+
 import SwiftUI
 import NavTemplateShared
 
@@ -6,6 +8,8 @@ struct TasksPage: Page {
     var widgets: [AnyWidget] { [] }
     
     @StateObject private var taskModel = TaskModel.shared
+    @State private var showSortMenu = false
+    @State private var headerFrame: CGRect = .zero    
     
     private func handleTaskEdit(_ task: TaskItem) {
         print("Editing task: \(task.name)")
@@ -27,34 +31,18 @@ struct TasksPage: Page {
                 
                 VStack(spacing: 0) {
                     // Header
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text("Tasks")
-                                .font(.largeTitle)
-                                .fontWeight(.black)
-                                .foregroundColor(Color("PageTitle"))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .padding(.horizontal)
-                    }
-                    .withSafeAreaTop()
-                    .padding()
-                    .backgroundBlur(radius: 10, opaque: true)
+                    TaskHeaderView(
+                        showSortMenu: $showSortMenu
+                    )
                     .background(
-                        MeshGradient(
-                            width: 3, height: 3,
-                            points: [
-                                [0.0,0.0], [0.5,0.0], [1.0,0.0],
-                                [0.0,0.5], [0.5,0.5], [1.0,0.5],
-                                [0.0,1.0], [0.5,1.0], [1.0,1.0]
-                            ],
-                            colors: [
-                                Color("Background"),Color("Background"),.black,
-                                .blue,Color("Background"),Color("Background"),
-                                .blue,.blue,Color("Background"),                    
-                            ]
-                        )
-                        .opacity(0.1)
+                        GeometryReader { geo in
+                            Color.clear
+                                .onAppear {
+                                    DispatchQueue.main.async {
+                                        self.headerFrame = geo.frame(in: .global)
+                                    }
+                                }
+                        }
                     )
                     
                     // Task List
@@ -65,7 +53,41 @@ struct TasksPage: Page {
                     )
                     .padding(.top)
                 }
+                
+                AddTaskButton()
+
+                // Sort Menu Overlay
+                if showSortMenu {
+                    ZStack {
+                        // Overlay for dismissing
+                        Color.black.opacity(0.001)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                showSortMenu = false
+                            }
+
+                        HStack {
+                            Spacer()
+                            VStack {
+                                SortMenu(
+                                    onDismiss: {
+                                        showSortMenu = false
+                                    }
+                                )
+                                .onDisappear {
+                                    showSortMenu = false
+                                }
+                                .padding(.top, self.headerFrame.maxY )
+                                
+                                Spacer()
+                            }                            
+                        }
+                        .animation(.spring(duration: 0.3), value: showSortMenu)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
             }
+            .animation(.spring(duration: 0.3), value: showSortMenu)
             .onAppear {
                 taskModel.loadAllTasks()
             }

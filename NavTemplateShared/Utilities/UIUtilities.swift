@@ -2,6 +2,21 @@
 
 import SwiftUI
 
+public struct RoundedCorner: Shape {
+    public var radius: CGFloat = .infinity
+    public var corners: UIRectCorner = .allCorners
+
+    public init(radius: CGFloat = .infinity, corners: UIRectCorner = .allCorners) {
+        self.radius = radius
+        self.corners = corners
+    }
+
+    public func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
+    }
+}
+
 public enum ColorUtilities {
     /// Creates a Color from a hex string
     /// - Parameter hex: Hex string in format "#RRGGBB" or "RRGGBB"
@@ -97,6 +112,24 @@ public extension View {
             .shadow(radius: 10)
     }
 
+    func withTransparentRoundedTopStyle() -> some View {
+        return self
+            .backgroundBlur(radius: 10, opaque: true)
+            .background(Color("SideSheetBg").opacity(0.2))
+            .clipShape(RoundedCorner(radius: 20, corners: [.topLeft, .topRight]))
+            .innerShadow(
+                shape: RoundedCorner(radius: 20, corners: [.topLeft, .topRight]),
+                color: Color.bottomSheetBorderMiddle,
+                lineWidth: 1,
+                offsetX: 0,
+                offsetY: 1,
+                blur: 0,
+                blendMode: .overlay,
+                opacity: 0.2
+            )
+            .shadow(radius: 10)
+    }
+
     func withTransparentCardStyle2() -> some View {
         return self
             // .backgroundBlur(radius: 10, opaque: true)
@@ -105,6 +138,8 @@ public extension View {
             .innerShadow(shape: RoundedRectangle(cornerRadius: 20), color: Color.bottomSheetBorderMiddle, lineWidth: 1, offsetX: 0, offsetY: 1, blur: 0, blendMode: .overlay, opacity: 0.5)
             .shadow(radius: 10)
     }
+
+
 
 
 }

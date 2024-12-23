@@ -1,6 +1,6 @@
 import Foundation
 
-class ProjectFileManager {
+internal class ProjectFileManager {
     static let shared = ProjectFileManager()
     private let baseDirectory = "Category Notes/Projects"
     private static var uniqueOffset: Int64 = 0
@@ -103,10 +103,10 @@ class ProjectFileManager {
     private func parseTaskLine(_ line: String, projectName: String, projectPath: String) -> TaskItem? {
         // Extract status character between [ and ]
         let statusPattern = "\\[(.?)\\]"
-        let isCompleted: Bool
+        let taskStatus: TaskStatus
         if let statusMatch = line.range(of: statusPattern, options: .regularExpression) {
             let statusChar = line[statusMatch].dropFirst().dropLast().first ?? " "
-            isCompleted = statusChar == "x"  // For now, only "x" means completed
+            taskStatus = TaskStatus(statusChar: statusChar)
         } else {
             return nil  // Invalid task line
         }
@@ -188,10 +188,10 @@ class ProjectFileManager {
         return TaskItem(
             id: timestamp,
             name: taskName,
-            isCompleted: isCompleted,
+            taskStatus: taskStatus,
             priority: priority,
             projectName: projectName,
-            projectFilePath: projectPath,  // Add project path
+            projectFilePath: projectPath,
             dueDate: dueDate,
             tags: tags,
             createTime: createTime
@@ -205,16 +205,11 @@ class ProjectFileManager {
     
     func removeTask(_ task: TaskItem) throws {
         let file = URL(fileURLWithPath: task.projectFilePath)
-        try removeTaskFromFile(task, in: file)
-    }
-    
-    private func removeTaskFromFile(_ task: TaskItem, in file: URL) throws {
         let content = try String(contentsOf: file, encoding: .utf8)
         var lines = content.components(separatedBy: .newlines)
         
-        // Find and remove the task line
         if let index = lines.firstIndex(where: { line in 
-            line.contains("createTime\">\(task.id)<")
+            line.contains("createTime\">\(task.id)<") && lineIsTask(line)
         }) {
             lines.remove(at: index)
             let updatedContent = lines.joined(separator: "\n")
@@ -222,22 +217,54 @@ class ProjectFileManager {
         }
     }
     
-    func updateTaskCompletion(_ task: TaskItem, isCompleted: Bool) throws {
+    func updateTaskStatus(_ task: TaskItem, status: TaskStatus) throws {
+        var updatedTask = task
+        updatedTask.taskStatus = status
+        try updateTask(updatedTask)
+    }
+    
+    func updateTaskName(_ task: TaskItem, newName: String) throws {
+        var updatedTask = task
+        updatedTask.name = newName
+        try updateTask(updatedTask)
+    }
+    
+    private func lineIsTask(_ line: String) -> Bool {
+        // Pattern matches:
+        // 1. Optional ">" and spaces
+        // 2. Required "-" and "[" followed by ANY character followed by "]"
+        // 3. Required task content
+        // 4. Required createTime span
+        let pattern = "^(>\\s*)?\\s*-\\s*\\[.\\].*<span class=\"createTime\">"
+        return line.range(of: pattern, options: .regularExpression) != nil
+    }
+    
+    private func extractLinePrefix(_ line: String) -> String {
+        // Match all leading whitespace and optional ">" character
+        let pattern = "^(\\s*>\\s*|\\s+)"
+        if let match = line.range(of: pattern, options: .regularExpression) {
+            return String(line[match])
+        }
+        return ""
+    }
+    
+    func updateTask(_ task: TaskItem) throws {
         let file = URL(fileURLWithPath: task.projectFilePath)
         let content = try String(contentsOf: file, encoding: .utf8)
         var lines = content.components(separatedBy: .newlines)
         
-        // Find and update the task line
         if let index = lines.firstIndex(where: { line in
-            line.contains("createTime\">\(task.id)<")
+            line.contains("createTime\">\(task.id)<") && lineIsTask(line)
         }) {
-            let line = lines[index]
-            let updatedLine = line.replacingOccurrences(
-                of: "\\[.\\]",
-                with: isCompleted ? "[x]" : "[ ]",
-                options: .regularExpression
-            )
-            lines[index] = updatedLine
+            // Preserve the original line's indentation
+            let prefix = extractLinePrefix(lines[index])
+            
+            // Convert task to text format
+            let updatedLine = TaskModel.shared.taskToText(task)
+            
+            // Add back the original indentation
+            lines[index] = prefix + updatedLine
+            
             let updatedContent = lines.joined(separator: "\n")
             try updatedContent.write(to: file, atomically: true, encoding: .utf8)
         }

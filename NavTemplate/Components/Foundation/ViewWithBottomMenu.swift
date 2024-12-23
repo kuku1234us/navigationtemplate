@@ -30,7 +30,6 @@ struct ViewWithBottomMenu: View {
                                     bounceValues[index] += 1  // Only increment for selected icon
                                 }
                             }) {
-                                VStack {
                                     ZStack {
                                         if selectedIndex == index {
                                             RadialGradient(
@@ -50,7 +49,6 @@ struct ViewWithBottomMenu: View {
                                             .symbolEffect(.wiggle.left.byLayer, value: bounceValues[index])
                                     }
                                     .frame(width: 50, height: 50)
-                                }
                             }
                             Spacer()
                         }

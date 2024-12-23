@@ -1,16 +1,68 @@
 import SwiftUI
 import NavTemplateShared
+import CoreHaptics
+
+extension UIImpactFeedbackGenerator {
+    static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.prepare()
+        generator.impactOccurred()
+    }
+}
 
 struct CustomCheckbox: View {
-    let isChecked: Bool
+    let taskStatus: TaskStatus
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            Image(systemName: isChecked ? "checkmark.square.fill" : "square")
+            Image(systemName: taskStatus.icon)
                 .symbolRenderingMode(.hierarchical)
-                .foregroundColor(isChecked ? Color("Accent") : Color("MySecondary"))
+                .foregroundColor(taskStatus == .completed ? Color("Accent") : Color("MySecondary"))
                 .font(.system(size: 20))
+        }
+    }
+}
+
+struct HapticMenuStyle: MenuStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Menu(configuration)
+            .simultaneousGesture(
+                TapGesture()
+                    .onEnded { _ in
+                        print("Menu tapped")
+                        UIImpactFeedbackGenerator.impact(.light)
+                    }
+            )
+    }
+}
+
+struct DeleteTaskButton: View {
+    let onDelete: () -> Void
+    @State private var showDeletePopover = false
+    
+    var body: some View {
+        Button {
+            UIImpactFeedbackGenerator.impact(.light)
+            showDeletePopover = true
+        } label: {
+            Image(systemName: "trash")
+                .font(.system(size: 16))
+                .foregroundColor(Color("MySecondary"))
+        }
+        .popover(isPresented: $showDeletePopover) {
+            Button(role: .destructive) {
+                UIImpactFeedbackGenerator.impact(.light)
+                onDelete()
+                showDeletePopover = false
+            } label: {
+                Label("Delete Task", systemImage: "trash")
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 12)
+            }
+            .buttonStyle(.borderless)
+            .presentationCompactAdaptation(.popover)
+            .padding(0)
         }
     }
 }
@@ -24,6 +76,7 @@ struct TaskItemView: View {
     @State private var isEditing: Bool = false
     @State private var editorHeight: CGFloat = 30
     @StateObject private var taskModel = TaskModel.shared
+    @FocusState private var isEditorFocused: Bool
     
     init(task: NavTemplateShared.TaskItem, 
          onEdit: @escaping () -> Void,
@@ -32,7 +85,7 @@ struct TaskItemView: View {
         self.onEdit = onEdit
         self.onDelete = onDelete
         _taskName = State(initialValue: task.name)
-        _isChecked = State(initialValue: task.isCompleted)
+        _isChecked = State(initialValue: task.taskStatus == .completed)
     }
     
     private func formatDate(_ date: Date?) -> String {
@@ -56,9 +109,18 @@ struct TaskItemView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 5) {
             // 1. Custom Checkbox
-            CustomCheckbox(isChecked: isChecked) {
-                isChecked.toggle()
-                taskModel.updateTaskCompletion(task, isCompleted: isChecked)
+            CustomCheckbox(taskStatus: task.taskStatus) {
+                // Cycle through statuses: notStarted -> completed -> inProgress -> notStarted
+                let newStatus: TaskStatus
+                switch task.taskStatus {
+                case .notStarted:
+                    newStatus = .completed
+                case .completed:
+                    newStatus = .inProgress
+                case .inProgress:
+                    newStatus = .notStarted
+                }
+                taskModel.updateTaskStatus(task, status: newStatus)
             }
             
             // 2. Task details
@@ -88,6 +150,18 @@ struct TaskItemView: View {
                         .disabled(!isEditing)
                         .padding(.leading, -5)
                         .padding(.top, -7)
+                        .focused($isEditorFocused)
+                        .onChange(of: isEditorFocused) { oldValue, newValue in
+                            if !newValue {  // Editor lost focus
+                                isEditing = false
+                                if task.name != taskName.trimmingCharacters(in: .whitespacesAndNewlines) {
+                                    taskModel.updateTaskName(
+                                        task,
+                                        newName: taskName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    )
+                                }
+                            }
+                        }
                 }
                 .onPreferenceChange(ViewHeightKey.self) { height in
                     editorHeight = height
@@ -136,19 +210,7 @@ struct TaskItemView: View {
                 
                 Spacer()
                 
-                Menu {
-                    Button(role: .destructive) {
-                        onDelete()
-                    } label: {
-                        Label("Delete Task", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 16))
-                        .foregroundColor(Color("MySecondary"))
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
+                DeleteTaskButton(onDelete: onDelete)
             }
         }
         .padding(.vertical, 12)

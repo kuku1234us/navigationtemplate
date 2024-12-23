@@ -1,6 +1,6 @@
 import SwiftUI
 
-public enum TaskPriority: String {
+public enum TaskPriority: String, Hashable {
     case urgent = "Urgent"
     case high = "High"
     case normal = "Normal"
