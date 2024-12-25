@@ -17,23 +17,23 @@ struct BookPage: Page {
 
     var widgets: [AnyWidget] {
         // Left sheet setup
-        let leftSideSheet = SideSheet(
-            id: leftSheetId,
-            content: {
-                LeftSideSheetContent(title: title, author: author)
-            },
-            direction: .leftToRight
-        )
+        // let leftSideSheet = SideSheet(
+        //     id: leftSheetId,
+        //     content: {
+        //         LeftSideSheetContent(title: title, author: author)
+        //     },
+        //     direction: .leftToRight
+        // )
 
-        let leftGestureHandler = DragGestureHandler(
-            proxy: leftSideSheet.proxy,
-            direction: .leftToRight
-        )
+        // let leftGestureHandler = DragGestureHandler(
+        //     proxy: leftSideSheet.proxy,
+        //     direction: .leftToRight
+        // )
 
-        let leftWidget = WidgetWithGesture(
-            widget: leftSideSheet,
-            gesture: leftGestureHandler
-        )
+        // let leftWidget = WidgetWithGesture(
+        //     widget: leftSideSheet,
+        //     gesture: leftGestureHandler
+        // )
 
         // Right sheet setup
         let rightSideSheet = SideSheet(
@@ -54,7 +54,9 @@ struct BookPage: Page {
             gesture: rightGestureHandler
         )
 
-        return [AnyWidget(leftWidget), AnyWidget(rightWidget)]
+        return [
+            // AnyWidget(leftWidget), 
+            AnyWidget(rightWidget)]
     }
     
     func makeMainContent() -> AnyView {

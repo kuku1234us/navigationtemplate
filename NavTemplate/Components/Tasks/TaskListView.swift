@@ -30,9 +30,9 @@ struct KeyboardAwareModifier: ViewModifier {
 }
 
 struct TaskListView: View {
-    let tasks: [NavTemplateShared.TaskItem]
-    let onEdit: (NavTemplateShared.TaskItem) -> Void
-    let onDelete: (NavTemplateShared.TaskItem) -> Void
+    @StateObject private var tasksFilterSort = TasksFilterSort.shared
+    let onEdit: (TaskItem) -> Void
+    let onDelete: (TaskItem) -> Void
     @State private var keyboardHeight: CGFloat = 0
     @State private var editingTaskId: Int64?
     
@@ -40,7 +40,7 @@ struct TaskListView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 5) {
-                    ForEach(tasks, id: \.id) { task in
+                    ForEach(tasksFilterSort.filteredTasks, id: \.id) { task in
                         TaskItemView(
                             task: task,
                             onEdit: { onEdit(task) },

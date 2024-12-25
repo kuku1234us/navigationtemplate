@@ -58,6 +58,21 @@ public struct TaskItem: Identifiable {
     }
 }
 
+// Define the filter set structure
+public struct TaskFilterToggleSet: Codable {
+    public var priorities: Set<TaskPriority>
+    public var statuses: Set<TaskStatus>
+    
+    public init(priorities: Set<TaskPriority> = [], statuses: Set<TaskStatus> = []) {
+        self.priorities = priorities
+        self.statuses = statuses
+    }
+}
+
+// Make TaskPriority and TaskStatus Codable
+extension TaskPriority: Codable {}
+extension TaskStatus: Codable {}
+
 public class TaskModel: ObservableObject {
     @Published public private(set) var tasks: [TaskItem] = []
     private let projectModel = ProjectModel.shared
@@ -65,7 +80,19 @@ public class TaskModel: ObservableObject {
     
     public static let shared = TaskModel()
     
+    // Add filter toggle set
+    @Published public private(set) var filterToggles: TaskFilterToggleSet {
+        didSet {
+            // Save to UserDefaults whenever it changes
+            saveFilterToggles()
+        }
+    }
+    
     private init() {
+        // Load filter toggles from UserDefaults
+        self.filterToggles = Self.loadFilterToggles()
+        
+        // projectModel.loadProjects()
         setupProjectObserver()
         setupSortOrderObserver()
         loadAllTasks()
@@ -112,11 +139,13 @@ public class TaskModel: ObservableObject {
                     allTasks.append(contentsOf: tasks)
                 }
             }
-            
+
+            self.tasks = allTasks
+
             // Apply current sort order instead of default sort
             DispatchQueue.main.async {
-                self.tasks = allTasks
                 self.applySortOrder(TaskSortOrder.shared.currentOrder)
+                self.objectWillChange.send()
             }
         } catch {
             print("Error loading tasks: \(error)")
@@ -220,12 +249,154 @@ public class TaskModel: ObservableObject {
         }
     }
     
-    private func applySortOrder(_ order: TaskSortOrderType) {
-        switch order {
-        case .taskCreationDesc:
-            sortTasksByCreatedTime()
-        case .projModifiedDesc:
-            sortTasksByProjectModified()
+    public func applySortOrder(_ order: TaskSortOrderType? = nil) {
+        // If no order provided, use current order from TaskSortOrder
+        let sortOrder = order ?? TaskSortOrder.shared.currentOrder
+        
+        // Apply sorting
+        tasks = sortTasks(tasks)
+        
+        // Force a UI update
+        objectWillChange.send()
+    }
+    
+    public func addTask(_ task: TaskItem) {
+        // Add to memory
+        DispatchQueue.main.async {
+            self.tasks.insert(task, at: 0)  // Insert at beginning for immediate visibility
+            self.applySortOrder(TaskSortOrder.shared.currentOrder)  // Re-sort if needed
         }
+        
+        // Add to file
+        do {
+            let taskText = taskToText(task)
+            try projectFileManager.appendTaskToFile(task.projectFilePath, taskText: taskText)
+        } catch {
+            print("Error adding task to file: \(error)")
+        }
+    }
+    
+    public func updateTask(_ task: TaskItem, newName: String, newPriority: TaskPriority, newProjectPath: String) {
+        // Create updated task
+        var updatedTask = task
+        updatedTask.name = newName
+        updatedTask.priority = newPriority
+        
+        // Check if project changed
+        let isProjectChanged = task.projectFilePath != newProjectPath
+        
+        if isProjectChanged {
+            updatedTask.projectFilePath = newProjectPath
+            if let project = projectModel.getProject(atPath: newProjectPath) {
+                updatedTask.projectName = project.projectName
+            }
+            
+            // Handle project change in files
+            do {
+                // 1. Remove from old project
+                try projectFileManager.removeTaskFromFile(task.projectFilePath, taskId: task.id)
+                
+                // 2. Add to new project
+                let newTaskText = taskToText(updatedTask)
+                try projectFileManager.appendTaskToFile(newProjectPath, taskText: newTaskText)
+            } catch {
+                print("Error moving task between projects: \(error)")
+                return
+            }
+        } else {
+            // Update in same project file
+            do {
+                try projectFileManager.updateTask(updatedTask)
+            } catch {
+                print("Error updating task: \(error)")
+                return
+            }
+        }
+        
+        // Update in memory
+        DispatchQueue.main.async {
+            if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                self.tasks[index] = updatedTask
+                // Force a UI update
+                self.objectWillChange.send()
+                self.applySortOrder(TaskSortOrder.shared.currentOrder)
+            }
+        }
+    }
+    
+    // Methods to handle filter toggles
+    private static func loadFilterToggles() -> TaskFilterToggleSet {
+        if let data = UserDefaults.standard.data(forKey: "TaskFilterToggles"),
+           let toggles = try? JSONDecoder().decode(TaskFilterToggleSet.self, from: data) {
+            return toggles
+        }
+        return TaskFilterToggleSet()  // Return empty set if nothing saved
+    }
+    
+    private func saveFilterToggles() {
+        if let data = try? JSONEncoder().encode(filterToggles) {
+            UserDefaults.standard.set(data, forKey: "TaskFilterToggles")
+        }
+    }
+    
+    // Public method to update toggles
+    public func updateFilterToggles(priorities: Set<TaskPriority>? = nil, statuses: Set<TaskStatus>? = nil) {
+        var newToggles = filterToggles
+        if let priorities = priorities {
+            newToggles.priorities = priorities
+        }
+        if let statuses = statuses {
+            newToggles.statuses = statuses
+        }
+        filterToggles = newToggles
+    }
+    
+    public func sortTasks(_ tasks: [TaskItem]) -> [TaskItem] {
+        let sortOrder = TaskSortOrder.shared.currentOrder
+        var sortedTasks = tasks
+        
+        switch sortOrder {
+        case .taskCreationDesc:
+            // Sort by task creation time (descending)
+            sortedTasks.sort { $0.createTime > $1.createTime }
+            
+        case .projSelectedDesc:
+            // Sort by project order from FilterSidesheet, then by task creation time
+            sortedTasks.sort { task1, task2 in
+                guard let proj1 = projectModel.getProject(atPath: task1.projectFilePath),
+                      let proj2 = projectModel.getProject(atPath: task2.projectFilePath) else {
+                    return false
+                }
+                
+                let order1 = projectModel.settings.projectOrder.firstIndex(of: proj1.projId) ?? Int.max
+                let order2 = projectModel.settings.projectOrder.firstIndex(of: proj2.projId) ?? Int.max
+                
+                if order1 != order2 {
+                    return order1 < order2
+                }
+                return task1.createTime > task2.createTime
+            }
+            
+        case .projModifiedDesc:
+            // Sort by newest task in project, then by task creation time
+            let projectLastTaskTime: [String: Date] = Dictionary(
+                grouping: tasks,
+                by: { $0.projectFilePath }
+            ).mapValues { tasks in
+                tasks.map { $0.createTime }.max() ?? Date.distantPast
+            }
+            
+            sortedTasks.sort { task1, task2 in
+                let proj1Time = projectLastTaskTime[task1.projectFilePath] ?? Date.distantPast
+                let proj2Time = projectLastTaskTime[task2.projectFilePath] ?? Date.distantPast
+                
+                if task1.projectFilePath == task2.projectFilePath {
+                    return task1.createTime > task2.createTime
+                }
+                return proj1Time > proj2Time
+            }
+        }
+        
+        return sortedTasks
     }
 } 

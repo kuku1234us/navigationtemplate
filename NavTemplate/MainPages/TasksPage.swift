@@ -5,19 +5,51 @@ import NavTemplateShared
 
 struct TasksPage: Page {
     var navigationManager: NavigationManager?
-    var widgets: [AnyWidget] { [] }
+    
+    // Create stable ID
+    private let rightSheetId = UUID()
+    
+    var widgets: [AnyWidget] {
+        // Right sheet setup
+        let rightSideSheet = SideSheet(
+            id: rightSheetId,
+            content: {
+                FilterSidesheet()
+            },
+            direction: .rightToLeft
+        )
+
+        let rightGestureHandler = DragGestureHandler(
+            proxy: rightSideSheet.proxy,
+            direction: .rightToLeft
+        )
+
+        let rightWidget = WidgetWithGesture(
+            widget: rightSideSheet,
+            gesture: rightGestureHandler
+        )
+
+        return [AnyWidget(rightWidget)]
+    }
     
     @StateObject private var taskModel = TaskModel.shared
     @State private var showSortMenu = false
     @State private var headerFrame: CGRect = .zero    
+    @State private var showTaskEditor = false
+    @State private var taskToEdit: TaskItem?
     
     private func handleTaskEdit(_ task: TaskItem) {
-        print("Editing task: \(task.name)")
-        // TODO: Implement edit modal
+        taskToEdit = task
+        showTaskEditor = true
     }
     
     private func handleTaskDelete(_ task: TaskItem) {
         taskModel.deleteTask(task)
+    }
+    
+    private func handleNewTask() {
+        taskToEdit = nil  // Ensure we're creating a new task
+        showTaskEditor = true
     }
     
     func makeMainContent() -> AnyView {
@@ -47,14 +79,13 @@ struct TasksPage: Page {
                     
                     // Task List
                     TaskListView(
-                        tasks: taskModel.tasks,
                         onEdit: handleTaskEdit,
                         onDelete: handleTaskDelete
                     )
                     .padding(.top)
                 }
                 
-                AddTaskButton()
+                AddTaskButton(onTap: handleNewTask)
 
                 // Sort Menu Overlay
                 if showSortMenu {
@@ -86,10 +117,28 @@ struct TasksPage: Page {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
+
+                // Task Editor Bottom Sheet
+                if showTaskEditor {
+                    BottomSheet(isPresented: $showTaskEditor) {
+                        TaskEditor(task: taskToEdit, isPresented: $showTaskEditor)
+                    }
+                    .background(
+                        Color.black.opacity(0.1)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                showTaskEditor = false
+                            }
+                    )
+                }
             }
             .animation(.spring(duration: 0.3), value: showSortMenu)
             .onAppear {
                 taskModel.loadAllTasks()
+            }
+            .onDisappear {
+                PropertyProxyFactory.shared.remove(id: rightSheetId)
+                NavigationState.shared.setActiveWidgetId(nil)
             }
         )
     }

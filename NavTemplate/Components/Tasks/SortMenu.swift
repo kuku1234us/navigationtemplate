@@ -30,7 +30,11 @@ struct SortMenu: View {
     
     var body: some View {
         VStack(spacing: 4) {
-            ForEach([TaskSortOrderType.taskCreationDesc, .projModifiedDesc], id: \.self) { type in
+            ForEach([
+                TaskSortOrderType.taskCreationDesc,
+                .projSelectedDesc,
+                .projModifiedDesc
+            ], id: \.self) { type in
                 SortMenuItem(
                     type: type,
                     isSelected: sortOrder.currentOrder == type,

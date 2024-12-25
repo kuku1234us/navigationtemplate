@@ -2,15 +2,15 @@
 import SwiftUI
 
 struct AddTaskButton: View {
-    @State private var showTaskEditor = false
-    @State private var taskText = ""
+    let onTap: () -> Void
     
     var body: some View {
         VStack {
             Spacer()
+
+            // Button to show sheet
             Button {
-                taskText = ""  // Reset text
-                showTaskEditor = true
+                onTap()
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .semibold))
@@ -18,20 +18,21 @@ struct AddTaskButton: View {
                     .frame(width: 40, height: 40)
                     .background(Color("Accent"))
                     .clipShape(Circle())
-                    .shadow(color: Color("Accent").opacity(0.4), radius: 4, x: 0, y: 2)
+                    .shadow(
+                        color: Color.black,
+                        radius: 10,
+                        x: 0,
+                        y: 5
+                    )
+                    .shadow(
+                        color: Color("Accent").opacity(0.3),
+                        radius: 12,
+                        x: 0,
+                        y: 6
+                    )
             }
             .frame(maxWidth: .infinity)
-            .padding(.bottom, NavigationState.bottomMenuHeight)
+            .padding(.bottom, NavigationState.bottomMenuHeight + 5)
         }
-        .sheet(isPresented: $showTaskEditor) {
-            TaskEditor(text: $taskText)
-                .presentationDetents([.height(150),.height(250)])
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled)
-                .presentationCornerRadius(20)
-                .presentationBackground(.clear)
-                .ignoresSafeArea()
-        }
-
     }
 }

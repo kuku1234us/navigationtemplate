@@ -269,4 +269,96 @@ internal class ProjectFileManager {
             try updatedContent.write(to: file, atomically: true, encoding: .utf8)
         }
     }
+    
+    public func appendTaskToFile(_ filePath: String, taskText: String) throws {
+        let fileURL = URL(fileURLWithPath: filePath)
+        let content = try String(contentsOf: fileURL, encoding: .utf8)
+        var lines = content.components(separatedBy: .newlines)
+        
+        // Find where tasks begin (after frontmatter)
+        var frontmatterEndIndex = 0
+        var taskCalloutIndex = -1
+        var inFrontmatter = false
+        
+        // First pass: find frontmatter end and existing task callout
+        for (index, line) in lines.enumerated() {
+            if line == "---" {
+                inFrontmatter = !inFrontmatter
+                if !inFrontmatter {
+                    frontmatterEndIndex = index
+                }
+            }
+            if line.contains("> [!task]+ Tasks") {
+                taskCalloutIndex = index
+                break
+            }
+        }
+        
+        // If no task callout exists, create one after frontmatter
+        if taskCalloutIndex == -1 {
+            taskCalloutIndex = frontmatterEndIndex + 1
+            lines.insert("", at: taskCalloutIndex)  // Empty line after frontmatter
+            lines.insert("> [!task]+ Tasks", at: taskCalloutIndex + 1)
+            taskCalloutIndex += 1  // Point to the callout line
+        }
+        
+        // Insert task with proper indentation
+        let indentedTaskText = "> " + taskText
+        lines.insert(indentedTaskText, at: taskCalloutIndex + 1)
+        
+        // Write back to file
+        let updatedContent = lines.joined(separator: "\n")
+        try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        
+        // Update project modified time
+        if let project = ProjectModel.shared.getProject(atPath: filePath) {
+            DispatchQueue.main.async {
+                ProjectModel.shared.updateProjectModifiedTime(project, to: Date())
+            }
+        }
+    }
+    
+    public func replaceTaskInFile(_ filePath: String, oldText: String, newText: String) throws {
+        let fileURL = URL(fileURLWithPath: filePath)
+        let content = try String(contentsOf: fileURL, encoding: .utf8)
+        let updatedContent = content.replacingOccurrences(of: oldText, with: newText)
+        try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
+    }
+    
+    public func removeTaskFromFile(_ filePath: String, taskId: Int64) throws {
+        let fileURL = URL(fileURLWithPath: filePath)
+        let content = try String(contentsOf: fileURL, encoding: .utf8)
+        var lines = content.components(separatedBy: .newlines)
+        
+        // Find and remove the task line
+        if let index = lines.firstIndex(where: { line in
+            line.contains("createTime\">\(taskId)<") && lineIsTask(line)
+        }) {
+            lines.remove(at: index)
+            
+            // Clean up empty Tasks callout if this was the last task
+            let taskCalloutPattern = "^>\\s*\\[!task\\]\\+\\s*Tasks\\s*$"
+            if let calloutIndex = lines.firstIndex(where: { line in
+                line.range(of: taskCalloutPattern, options: .regularExpression) != nil
+            }) {
+                // Check if there are any tasks left in this callout
+                let remainingLines = Array(lines.suffix(from: calloutIndex + 1))
+                let hasRemainingTasks = remainingLines
+                    .prefix(while: { $0.hasPrefix(">") })
+                    .contains(where: { lineIsTask($0) })
+                
+                if !hasRemainingTasks {
+                    // Remove the callout if no tasks remain
+                    lines.remove(at: calloutIndex)
+                    // Remove empty line before callout if it exists
+                    if calloutIndex > 0 && lines[calloutIndex-1].isEmpty {
+                        lines.remove(at: calloutIndex-1)
+                    }
+                }
+            }
+            
+            let updatedContent = lines.joined(separator: "\n")
+            try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        }
+    }
 } 

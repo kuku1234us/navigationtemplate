@@ -15,39 +15,52 @@ struct BottomSheet<Content: View>: View {
     private let dragIndicatorHeight: CGFloat = 20
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // The actual sheet
+        ZStack() {
             VStack(spacing: 0) {
-                // Optional drag indicator
-                Capsule()
-                    .fill(Color.secondary.opacity(0.5))
-                    .frame(width: 40, height: 6)
-                    .padding(.top, 8)
-                
-                // The child content, measured
-                content()
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear
-                                .onAppear {
-                                    self.contentHeight = geo.size.height
+                Spacer()
+
+                VStack(spacing:0) {
+                    // The actual sheet
+                    VStack(spacing: 0) {
+                        // Optional drag indicator
+                        Capsule()
+                            .fill(Color.secondary.opacity(0.5))
+                            .frame(width: 40, height: 6)
+                            .padding(.top, 8)
+                        
+                        // The child content, measured
+                        content()
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear
+                                        .onAppear {
+                                            self.contentHeight = geo.size.height
+                                        }
+                                        .onChange(of: geo.size.height) { oldValue, newValue in
+                                            self.contentHeight = newValue
+                                        }
                                 }
-                                .onChange(of: geo.size.height) { newVal in
-                                    self.contentHeight = newVal
-                                }
-                        }
-                    )
+                            )
+                    }
+                    .frame(height: max(contentHeight, 100) + dragIndicatorHeight, alignment: .top)
+                    .onAppear { setupKeyboardObservers() }
+
+                    // Only show rectangle when keyboard is hidden
+                    if keyboardHeight == 0 {
+                        Rectangle()
+                            .fill(.clear)
+                            .frame(height: NavigationState.bottomMenuHeight)
+                            .background(.clear)
+                    }
+                }
+                .background(Color("Background").opacity(0.7))
+                .withTransparentRoundedTopStyle()
+                .offset(y: offsetForSheet())
+                .animation(.easeInOut(duration: 0.25), value: contentHeight)
+                .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
             }
-            .padding(.bottom, safeBottomInset()) // account for safe area if needed
-            // Ensure some fallback so it's not 0
-            .frame(height: max(contentHeight, 100) + dragIndicatorHeight, alignment: .top)
-            .background(.regularMaterial)
-            .cornerRadius(16, antialiased: true)
-            .offset(y: offsetForSheet())
-            .animation(.easeInOut(duration: 0.25), value: contentHeight)
-            .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
-            .onAppear { setupKeyboardObservers() }
-            
+            .frame(maxWidth: .infinity,maxHeight: .infinity)
+            .ignoresSafeArea()
         }
         .ignoresSafeArea(edges: .bottom)
     }

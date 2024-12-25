@@ -55,7 +55,6 @@ struct SideSheet<Content: View>: Widget {
                     // Sheet content
                     VStack(spacing: 0) {
                         content
-
                     }
                     .frame(width: SheetConstants.width)
                     .padding(.top, safeAreaInsets.top)

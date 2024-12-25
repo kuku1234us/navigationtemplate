@@ -1,15 +1,16 @@
 import Foundation
 import Combine
 
-public enum TaskSortOrderType: String {
-    case taskCreationDesc = "Task Creation (Newest First)"
-    case projModifiedDesc = "Project Modified (Newest First)"
+public enum TaskSortOrderType: String, CaseIterable {
+    case taskCreationDesc = "Task Creation"
+    case projSelectedDesc = "Proj Selected"
+    case projModifiedDesc = "Proj Modified"
     
     public var icon: String {
         switch self {
         case .taskCreationDesc:
             return "calendar.badge.clock"
-        case .projModifiedDesc:
+        case .projSelectedDesc, .projModifiedDesc:
             return "document.badge.clock"
         }
     }
@@ -18,7 +19,7 @@ public enum TaskSortOrderType: String {
         switch self {
         case .taskCreationDesc:
             return "calendar.badge.clock"
-        case .projModifiedDesc:
+        case .projSelectedDesc, .projModifiedDesc:
             return "document.badge.clock.fill"
         }
     }
@@ -27,6 +28,8 @@ public enum TaskSortOrderType: String {
         switch self {
         case .taskCreationDesc:
             return "Task Creation"
+        case .projSelectedDesc:
+            return "Proj Selected"
         case .projModifiedDesc:
             return "Proj Modified"
         }
@@ -36,8 +39,10 @@ public enum TaskSortOrderType: String {
         switch self {
         case .taskCreationDesc:
             return "Sort by task creation time"
+        case .projSelectedDesc:
+            return "Sort by project order, then task creation"
         case .projModifiedDesc:
-            return "Sort by project modification time"
+            return "Sort by newest task in project"
         }
     }
 }

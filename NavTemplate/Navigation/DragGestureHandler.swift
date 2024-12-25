@@ -8,6 +8,7 @@ struct DragGestureHandler: Gesture {
     private let maxOffset: CGFloat
     private let minOffset: CGFloat
     private let minimumDistance: CGFloat = 5
+    private let id: UUID
 
     enum DragDirection {
         case rightToLeft
@@ -19,6 +20,7 @@ struct DragGestureHandler: Gesture {
     }
 
     init(proxy: PropertyProxy, direction: DragDirection) {
+        self.id = UUID()
         self.proxy = proxy
         self.direction = direction
         self.maxOffset = direction == .leftToRight ? 0 : SheetConstants.width
@@ -101,7 +103,7 @@ struct DragGestureHandler: Gesture {
                 }
 
                 proxy.directionChecked = false
-                proxy.lastDragDirection = nil
+                // proxy.lastDragDirection = nil
                 proxy.prevDragChange = 0
             }
     }

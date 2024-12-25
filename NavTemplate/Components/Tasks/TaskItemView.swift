@@ -67,20 +67,33 @@ struct DeleteTaskButton: View {
     }
 }
 
+struct EditTaskButton: View {
+    let onEdit: () -> Void
+    
+    var body: some View {
+        Button {
+            UIImpactFeedbackGenerator.impact(.light)
+            onEdit()
+        } label: {
+            Image(systemName: "square.and.pencil")
+                .font(.system(size: 16))
+                .foregroundColor(Color("MySecondary"))
+        }
+    }
+}
+
 struct TaskItemView: View {
-    let task: NavTemplateShared.TaskItem
+    let task: TaskItem
     let onEdit: () -> Void
     let onDelete: () -> Void
+    @StateObject private var taskModel = TaskModel.shared
     @State private var taskName: String
     @State private var isChecked: Bool
     @State private var isEditing: Bool = false
     @State private var editorHeight: CGFloat = 30
-    @StateObject private var taskModel = TaskModel.shared
     @FocusState private var isEditorFocused: Bool
     
-    init(task: NavTemplateShared.TaskItem, 
-         onEdit: @escaping () -> Void,
-         onDelete: @escaping () -> Void) {
+    init(task: TaskItem, onEdit: @escaping () -> Void, onDelete: @escaping () -> Void) {
         self.task = task
         self.onEdit = onEdit
         self.onDelete = onDelete
@@ -119,6 +132,8 @@ struct TaskItemView: View {
                     newStatus = .inProgress
                 case .inProgress:
                     newStatus = .notStarted
+                @unknown default:
+                    newStatus = .notStarted  // Default to notStarted for unknown cases
                 }
                 taskModel.updateTaskStatus(task, status: newStatus)
             }
@@ -172,10 +187,15 @@ struct TaskItemView: View {
                 
                 // Project name and dates
                 VStack(alignment: .leading, spacing: 8) {
-                    // Project name
-                    Text(task.projectName)
-                        .font(.system(size: 14))
-                        .foregroundColor(Color("MySecondary"))
+                    // Project name with icon
+                    HStack(spacing: 4) {
+                        Image(systemName: (taskModel.getProjectForTask(task)?.icon ?? "folder"))
+                            .font(.system(size: 12))
+                            .foregroundColor(Color("MySecondary"))
+                        Text(task.projectName)
+                            .font(.system(size: 14))
+                            .foregroundColor(Color("MySecondary"))
+                    }
                     
                     // Dates
                     HStack(spacing: 16) {
@@ -202,11 +222,7 @@ struct TaskItemView: View {
             
             // 3. Edit and Delete buttons
             VStack(spacing: 12) {
-                Button(action: onEdit) {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 16))
-                        .foregroundColor(Color("MySecondary"))
-                }
+                EditTaskButton(onEdit: onEdit)
                 
                 Spacer()
                 
@@ -223,6 +239,9 @@ struct TaskItemView: View {
                 .frame(width: 3),
             alignment: .leading
         )
+        .onChange(of: task.name) { _, newValue in
+            taskName = newValue
+        }
     }
 }
 

@@ -40,6 +40,15 @@ struct HomePage: Page {
         AnyView(
             ViewWithBottomMenu(items: [
                 MenuBarItem(
+                    unselectedIcon: "checklist",
+                    selectedIcon: "checklist.checked",
+                    targetView: AnyView(
+                        TasksPage(
+                            navigationManager: navigationManager
+                        )
+                    )
+                ),                
+                MenuBarItem(
                     unselectedIcon: "sun.horizon",
                     selectedIcon: "sun.horizon.fill",
                     targetView: AnyView(
@@ -49,14 +58,10 @@ struct HomePage: Page {
                     )
                 ),
                 MenuBarItem(
-                    unselectedIcon: "checklist",
-                    selectedIcon: "checklist.checked",
-                    targetView: AnyView(
-                        TasksPage(
-                            navigationManager: navigationManager
-                        )
-                    )
-                ),
+                    unselectedIcon: "testtube.2",
+                    selectedIcon: "testtube.2",
+                    targetView: AnyView(TestPage())
+                ),                
                 MenuBarItem(
                     unselectedIcon: "house",
                     selectedIcon: "house.fill",

@@ -29,9 +29,3 @@ struct HomeLeftSidesheetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
-
-#Preview {
-    HomeLeftSidesheetView()
-        .frame(width: SheetConstants.width)
-        .background(Color("SideSheetBg"))
-} 
