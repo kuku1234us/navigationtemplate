@@ -25,4 +25,14 @@ public enum TaskPriority: String, Hashable {
         case .low: return Color("LowPriorityColor")
         }
     }
+    
+    // Returns true if self is higher priority than other
+    public func isHigherThan(_ other: TaskPriority) -> Bool {
+        let priorities: [TaskPriority] = [.urgent, .high, .normal, .low]
+        guard let selfIndex = priorities.firstIndex(of: self),
+              let otherIndex = priorities.firstIndex(of: other) else {
+            return false
+        }
+        return selfIndex < otherIndex
+    }
 } 

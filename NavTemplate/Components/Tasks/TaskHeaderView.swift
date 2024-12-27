@@ -26,14 +26,14 @@ struct TaskHeaderView: View {
                         }
                     )
                     
-                    IconButton(
-                        selectedIcon: "slider.horizontal.below.square.filled.and.square",
-                        unselectedIcon: "slider.horizontal.below.square.filled.and.square",
-                        isSelected: $filterSelected,
-                        action: {
-                            filterSelected.toggle()
-                        }
-                    )
+                    // IconButton(
+                    //     selectedIcon: "slider.horizontal.below.square.filled.and.square",
+                    //     unselectedIcon: "slider.horizontal.below.square.filled.and.square",
+                    //     isSelected: $filterSelected,
+                    //     action: {
+                    //         filterSelected.toggle()
+                    //     }
+                    // )
                 }
             }
         }

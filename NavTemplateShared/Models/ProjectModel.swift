@@ -6,11 +6,11 @@ public class ProjectMetadata: ObservableObject, Codable {
     public let projId: Int64          // Unix timestamp
     public let banner: URL?           // Image URL
     @Published public var projectStatus: ProjectStatus
-    public let noteType: String       // Always "Project"
-    public let creationTime: Date     // File creation time
-    @Published public var modifiedTime: Date     // File last modified time
-    public let filePath: String       // Full path to project file
-    public let icon: String  // Add icon field
+    public let noteType: String
+    public let creationTime: Date
+    @Published public var modifiedTime: Date
+    public let filePath: String
+    public let icon: String?  // Changed back to String to store icon filename
     
     enum CodingKeys: String, CodingKey {
         case projId, banner, projectStatus, noteType, creationTime, modifiedTime, filePath, icon
@@ -40,7 +40,7 @@ public class ProjectMetadata: ObservableObject, Codable {
         creationTime = try container.decode(Date.self, forKey: .creationTime)
         modifiedTime = try container.decode(Date.self, forKey: .modifiedTime)
         filePath = try container.decode(String.self, forKey: .filePath)
-        icon = try container.decode(String.self, forKey: .icon)
+        icon = try container.decodeIfPresent(String.self, forKey: .icon)
     }
     
     public init(
@@ -51,7 +51,7 @@ public class ProjectMetadata: ObservableObject, Codable {
         creationTime: Date,
         modifiedTime: Date,
         filePath: String,
-        icon: String = "folder"  // Default icon
+        icon: String? = nil  // Updated initializer
     ) {
         self.projId = projId
         self.banner = banner
@@ -155,15 +155,21 @@ public class ProjectModel: ObservableObject {
     private init() {
         // Load project settings from UserDefaults
         self.settings = Self.loadProjectSettings()
-        loadProjects()  // Load projects after settings
         
-        // Initialize with default settings if needed
-        if settings.projectOrder.isEmpty && !projects.isEmpty {
-            let allProjectIds = projects.map { $0.projId }
-            updateProjectSettings(
-                selectedProjects: Set(allProjectIds),
-                projectOrder: allProjectIds
-            )
+        // Start loading projects asynchronously
+        Task {
+            await loadProjects()
+            
+            // Initialize with default settings if needed
+            await MainActor.run {
+                if settings.projectOrder.isEmpty && !projects.isEmpty {
+                    let allProjectIds = projects.map { $0.projId }
+                    updateProjectSettings(
+                        selectedProjects: Set(allProjectIds),
+                        projectOrder: allProjectIds
+                    )
+                }
+            }
         }
     }
     
@@ -213,15 +219,52 @@ public class ProjectModel: ObservableObject {
         updateProjectSettings(selectedProjects: selectedProjects)
     }
     
-    public func loadProjects() {
+    @MainActor
+    public func loadProjects() async {
         do {
             let projectFiles = try ProjectFileManager.shared.findAllProjectFiles()
             var projectMetadata: [ProjectMetadata] = []
             
             for fileURL in projectFiles {
                 if let metadata = try parseProjectMetadata(from: fileURL) {
+                    // Check if this is an existing project with a different icon
+                    if let existingProject = projects.first(where: { $0.projId == metadata.projId }),
+                       let oldIcon = existingProject.icon,
+                       let newIcon = metadata.icon,
+                       oldIcon != newIcon {
+                        // Remove old icon from cache
+                        ImageCache.shared.removeImage(for: oldIcon)
+                    }
                     projectMetadata.append(metadata)
                 }
+            }
+            
+            // Get set of all current project IDs
+            let currentProjectIds = Set(projectMetadata.map { $0.projId })
+            
+            // Find new projects (in current load but not in settings)
+            let newProjectIds = currentProjectIds.subtracting(Set(settings.projectOrder))
+            
+            // Find removed projects (in settings but not in current load)
+            let removedProjectIds = Set(settings.projectOrder).subtracting(currentProjectIds)
+            
+            if !newProjectIds.isEmpty || !removedProjectIds.isEmpty {
+                var updatedOrder = settings.projectOrder
+                var updatedSelected = settings.selectedProjects
+                
+                // Remove old projects
+                updatedOrder.removeAll { removedProjectIds.contains($0) }
+                updatedSelected.subtract(removedProjectIds)
+                
+                // Add new projects to the end of order and to selected
+                updatedOrder.append(contentsOf: newProjectIds)
+                updatedSelected.formUnion(newProjectIds)
+                
+                // Update settings
+                updateProjectSettings(
+                    selectedProjects: updatedSelected,
+                    projectOrder: updatedOrder
+                )
             }
             
             // Sort by modified time, newest first
@@ -229,11 +272,7 @@ public class ProjectModel: ObservableObject {
             
             // Assign immediately so other components can access
             self.projects = projectMetadata
-            
-            // Notify observers on main thread
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
-            }
+            self.objectWillChange.send()
         } catch {
             print("Error loading projects: \(error)")
         }
@@ -274,6 +313,9 @@ public class ProjectModel: ObservableObject {
             bannerURL = URL(string: bannerPath)
         }
         
+        // Parse icon filename directly (no URL conversion needed)
+        let iconFilename = metadata["icon"]
+        
         return ProjectMetadata(
             projId: projId,
             banner: bannerURL,
@@ -282,7 +324,7 @@ public class ProjectModel: ObservableObject {
             creationTime: creationDate,
             modifiedTime: modificationDate,
             filePath: fileURL.path,
-            icon: metadata["icon"] ?? "folder"
+            icon: iconFilename  // Pass the filename string directly
         )
     }
     
@@ -331,7 +373,6 @@ public class ProjectModel: ObservableObject {
         }
         
         // Create default inbox project if none exists
-        // This is a simplified version - you'll need to implement proper inbox creation
         return ProjectMetadata(
             projId: Int64(Date().timeIntervalSince1970),
             projectStatus: .progress,
@@ -339,7 +380,7 @@ public class ProjectModel: ObservableObject {
             creationTime: Date(),
             modifiedTime: Date(),
             filePath: "Category Notes/Projects/Inbox.md",
-            icon: "tray.and.arrow.down"
+            icon: "inbox.png"  // Use appropriate default icon filename
         )
     }
     

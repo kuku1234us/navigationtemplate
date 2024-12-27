@@ -11,14 +11,23 @@ struct ProjectRow: View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
                 // Icon with fixed width container
-                Image(systemName: project.icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(
-                        ProjectModel.shared.isProjectSelected(project.projId)
-                            ? Color("MySecondary")
-                            : Color("MyTertiary")
+                if let iconFilename = project.icon {
+                    CachedAsyncImage(
+                        source: .local(iconFilename),
+                        width: 16,
+                        height: 16
                     )
-                    .frame(width: 24)  // Fixed width for all icons
+                    .frame(width: 16)  // Changed from 24 to 16
+                } else {
+                    Image(systemName: "folder")
+                        .font(.system(size: 16))
+                        .foregroundColor(
+                            ProjectModel.shared.isProjectSelected(project.projId)
+                                ? Color("MySecondary")
+                                : Color("MyTertiary")
+                        )
+                        .frame(width: 16)  // Changed from 24 to 16
+                }
                 
                 Text(project.projectName)
                     .foregroundColor(
@@ -30,9 +39,9 @@ struct ProjectRow: View {
                 
                 Image(systemName: "line.3.horizontal")
                     .foregroundColor(Color("MyTertiary"))
-                    .padding(.leading, 8)
+                    // .padding(.leading, 8)
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
                 ProjectModel.shared.isProjectSelected(project.projId)
@@ -60,7 +69,16 @@ struct DraggableProjectRow: View {
         )
         .draggable(project) {
             HStack {
-                Image(systemName: project.icon)
+                if let iconFilename = project.icon {
+                    CachedAsyncImage(
+                        source: .local(iconFilename),
+                        width: 16,
+                        height: 16
+                    )
+                } else {
+                    Image(systemName: "folder")
+                        .font(.system(size: 16))
+                }
                 Text(project.projectName)
             }
             .padding(8)
@@ -159,7 +177,7 @@ struct FilterSidesheet: View {
                             .foregroundColor(areAllProjectsSelected ? Color("Accent") : Color("MySecondary"))
                             .font(.system(size: 16))
                     }
-                    .padding(.leading, 16)
+                    .padding(.leading, 12)
                     
                     Spacer()
                 }

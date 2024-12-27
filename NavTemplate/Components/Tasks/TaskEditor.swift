@@ -47,14 +47,23 @@ struct ProjectButton: View {
     
     var body: some View {
         Menu {
-            ForEach(projectModel.projects, id: \.projId) { project in
+            ForEach(projectModel.sortedProjects, id: \.projId) { project in
                 Button {
                     selectedProject = project
                 } label: {
                     HStack {
-                        Image(systemName: project.icon)
-                            .font(.system(size: 12))
-                            .foregroundColor(Color("MySecondary"))
+                        if let iconFilename = project.icon {
+                            CachedAsyncImage(
+                                source: .local(iconFilename),
+                                width: 12,
+                                height: 12
+                            )
+                        } else {
+                            Image(systemName: "folder")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color("MySecondary"))
+                        }
+                        
                         Text(project.projectName)
                         if project.projId == selectedProject.projId {
                             Image(systemName: "checkmark")
@@ -64,8 +73,17 @@ struct ProjectButton: View {
             }
         } label: {
             HStack {
-                Image(systemName: selectedProject.icon)
-                    .font(.system(size: 12))
+                if let iconFilename = selectedProject.icon {
+                    CachedAsyncImage(
+                        source: .local(iconFilename),
+                        width: 12,
+                        height: 12
+                    )
+                } else {
+                    Image(systemName: "folder")
+                        .font(.system(size: 12))
+                }
+                
                 Text(selectedProject.projectName)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 12))

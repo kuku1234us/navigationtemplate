@@ -189,9 +189,18 @@ struct TaskItemView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     // Project name with icon
                     HStack(spacing: 4) {
-                        Image(systemName: (taskModel.getProjectForTask(task)?.icon ?? "folder"))
-                            .font(.system(size: 12))
-                            .foregroundColor(Color("MySecondary"))
+                        if let iconFilename = taskModel.getProjectForTask(task)?.icon {
+                            CachedAsyncImage(
+                                source: .local(iconFilename),
+                                width: 12,
+                                height: 12
+                            )
+                        } else {
+                            Image(systemName: "folder")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color("MySecondary"))
+                        }
+                        
                         Text(task.projectName)
                             .font(.system(size: 14))
                             .foregroundColor(Color("MySecondary"))

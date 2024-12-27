@@ -1,40 +1,17 @@
 // BookPage.swift
 
 import SwiftUI
+import NavTemplateShared
 
 struct BookPage: Page {
     var navigationManager: NavigationManager?
-
-    @State private var debugText: String = "No gesture detected"
-    @State private var translation: CGPoint = .zero
-
     let title: String
     let author: String
-
-    // Create stable IDs
-    private let leftSheetId = UUID()
+    
+    // Create stable ID
     private let rightSheetId = UUID()
-
+    
     var widgets: [AnyWidget] {
-        // Left sheet setup
-        // let leftSideSheet = SideSheet(
-        //     id: leftSheetId,
-        //     content: {
-        //         LeftSideSheetContent(title: title, author: author)
-        //     },
-        //     direction: .leftToRight
-        // )
-
-        // let leftGestureHandler = DragGestureHandler(
-        //     proxy: leftSideSheet.proxy,
-        //     direction: .leftToRight
-        // )
-
-        // let leftWidget = WidgetWithGesture(
-        //     widget: leftSideSheet,
-        //     gesture: leftGestureHandler
-        // )
-
         // Right sheet setup
         let rightSideSheet = SideSheet(
             id: rightSheetId,
@@ -54,32 +31,20 @@ struct BookPage: Page {
             gesture: rightGestureHandler
         )
 
-        return [
-            // AnyWidget(leftWidget), 
-            AnyWidget(rightWidget)]
+        return [AnyWidget(rightWidget)]
     }
+    
+    let iconUrl = "https://www.flaticon.com/download/icon/3281289?icon_id=3281289&author=266&team=266&keyword=Suitcase&pack=packs%2Fstrategy-and-management-24&style=8&format=png&color=%23000000&colored=2&size=128"
     
     func makeMainContent() -> AnyView {
         AnyView(
             VStack(spacing: 20) {
                 Text("Book Page")
                     .font(.largeTitle)
+                
                 Text("Title: \(title)")
                 Text("Author: \(author)")
-
-                // Debug information
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Debug Info:")
-                        .font(.headline)
-                    Text(debugText)
-                        .font(.system(.body, design: .monospaced))
-                    Text("Translation: (\(translation.x.rounded()), \(translation.y.rounded()))")
-                        .font(.system(.body, design: .monospaced))
-                }
-                .padding()
-                .background(Color.gray.opacity(0.2))
-                .cornerRadius(10)
-
+                
                 Button("Go Back") {
                     navigationManager?.navigateBack()
                 }
@@ -87,45 +52,26 @@ struct BookPage: Page {
             .padding()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onDisappear {
-                PropertyProxyFactory.shared.remove(id: leftSheetId)
                 PropertyProxyFactory.shared.remove(id: rightSheetId)
                 NavigationState.shared.setActiveWidgetId(nil)
             }
         )
     }
+}
 
-    // Move LeftSideSheetContent inside BookPage
-    private struct LeftSideSheetContent: View {
-        let title: String
-        let author: String
-
-        var body: some View {
-            VStack {
-                Text("Book Details")
-                    .font(.largeTitle)
-                Text("Title: \(title)")
-                Text("Author: \(author)")
-                Button("Close") {
-                    // Logic to close the side sheet
-                }
+// Move RightSideSheetContent outside BookPage
+private struct RightSideSheetContent: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("Chapters")
+                .font(.headline)
+                .padding()
+            
+            List(1...10, id: \.self) { chapter in
+                Text("Chapter \(chapter)")
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .listStyle(.plain)
         }
-    }
-
-    private struct RightSideSheetContent: View {
-        var body: some View {
-            VStack(spacing: 0) {
-                Text("Chapters")
-                    .font(.headline)
-                    .padding()
-                
-                List(1...10, id: \.self) { chapter in
-                    Text("Chapter \(chapter)")
-                }
-                .listStyle(.plain)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

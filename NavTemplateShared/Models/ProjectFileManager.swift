@@ -361,4 +361,12 @@ internal class ProjectFileManager {
             try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
         }
     }
+    
+    public func getIconPath(filename: String) -> URL? {
+        guard let vaultURL = ObsidianVaultAccess.shared.vaultURL else { return nil }
+        return vaultURL
+            .appendingPathComponent(".obsidian")
+            .appendingPathComponent("icons")
+            .appendingPathComponent(filename)
+    }
 } 

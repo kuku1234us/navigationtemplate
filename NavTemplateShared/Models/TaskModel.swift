@@ -250,9 +250,6 @@ public class TaskModel: ObservableObject {
     }
     
     public func applySortOrder(_ order: TaskSortOrderType? = nil) {
-        // If no order provided, use current order from TaskSortOrder
-        let sortOrder = order ?? TaskSortOrder.shared.currentOrder
-        
         // Apply sorting
         tasks = sortTasks(tasks)
         
@@ -360,8 +357,17 @@ public class TaskModel: ObservableObject {
             // Sort by task creation time (descending)
             sortedTasks.sort { $0.createTime > $1.createTime }
             
+        case .priorityDesc:
+            // Sort by priority (descending), then by creation time (descending)
+            sortedTasks.sort { task1, task2 in
+                if task1.priority != task2.priority {
+                    return task1.priority.isHigherThan(task2.priority)
+                }
+                return task1.createTime > task2.createTime
+            }
+            
         case .projSelectedDesc:
-            // Sort by project order from FilterSidesheet, then by task creation time
+            // Sort by project order from FilterSidesheet, then by priority, then by task creation time
             sortedTasks.sort { task1, task2 in
                 guard let proj1 = projectModel.getProject(atPath: task1.projectFilePath),
                       let proj2 = projectModel.getProject(atPath: task2.projectFilePath) else {
@@ -374,11 +380,17 @@ public class TaskModel: ObservableObject {
                 if order1 != order2 {
                     return order1 < order2
                 }
+                
+                if task1.priority != task2.priority {
+                    return task1.priority.isHigherThan(task2.priority)
+                }
+                
+                // If same priority, sort by creation time (descending)
                 return task1.createTime > task2.createTime
             }
             
         case .projModifiedDesc:
-            // Sort by newest task in project, then by task creation time
+            // Get the last task creation time for each project
             let projectLastTaskTime: [String: Date] = Dictionary(
                 grouping: tasks,
                 by: { $0.projectFilePath }
@@ -391,8 +403,13 @@ public class TaskModel: ObservableObject {
                 let proj2Time = projectLastTaskTime[task2.projectFilePath] ?? Date.distantPast
                 
                 if task1.projectFilePath == task2.projectFilePath {
+                    if task1.priority != task2.priority {
+                        return task1.priority.isHigherThan(task2.priority)
+                    }
+                    // If same priority, sort by creation time (descending)
                     return task1.createTime > task2.createTime
                 }
+                
                 return proj1Time > proj2Time
             }
         }

@@ -11,12 +11,15 @@ struct SortMenuItem: View {
             UIImpactFeedbackGenerator.impact(.light)
             action()
         } label: {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: isSelected ? type.selectedIcon : type.icon)
+                    .frame(width: 24, alignment: .center)
                     .foregroundColor(isSelected ? Color("Accent") : Color("MyTertiary"))
+                
                 Text(type.label)
                     .foregroundColor(Color("MyTertiary"))
             }
+            .frame(alignment: .leading)
             .padding(.horizontal, 12)
             .frame(height: 32)
         }
@@ -29,12 +32,8 @@ struct SortMenu: View {
     let onDismiss: () -> Void
     
     var body: some View {
-        VStack(spacing: 4) {
-            ForEach([
-                TaskSortOrderType.taskCreationDesc,
-                .projSelectedDesc,
-                .projModifiedDesc
-            ], id: \.self) { type in
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(TaskSortOrderType.allCases, id: \.self) { type in
                 SortMenuItem(
                     type: type,
                     isSelected: sortOrder.currentOrder == type,
