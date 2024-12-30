@@ -67,15 +67,12 @@ struct HomePage: Page {
                     selectedIcon: "house.fill",
                     targetView: DashboardLinksView(navigationManager: navigationManager).makeView()
                 ),
-                
                 MenuBarItem(
-                    unselectedIcon: "book",
-                    selectedIcon: "book.fill",
+                    unselectedIcon: "wrench.and.screwdriver",
+                    selectedIcon: "wrench.and.screwdriver.fill",
                     targetView: AnyView(
-                        BookPage(
-                            navigationManager: navigationManager,
-                            title: "Sample Book",
-                            author: "John Doe"
+                        MaintenancePage(
+                            navigationManager: navigationManager
                         )
                     )
                 ),

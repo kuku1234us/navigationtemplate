@@ -14,6 +14,14 @@ struct Provider: TimelineProvider {
     // Configuration for timeline generation
     private let numIntervals = 60
     private let minPerInterval = 5
+    private let logger = Logger(target: "NavWidget")
+    
+    init() {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "HH:mm:ss"
+        let timeString = dateFormatter.string(from: Date())
+        logger.info("NavWidget initialized at \(timeString)")
+    }
     
     func placeholder(in context: Context) -> SimpleEntry {
         SimpleEntry(date: Date(), consciousState: .wake, lastActivityType: nil, lastConsciousTime: nil, lastMealTime: nil, isStaticUpdate: false)
@@ -22,6 +30,12 @@ struct Provider: TimelineProvider {
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
         let activityStack = ActivityStack()
         activityStack.loadActivities(isWidget: true)
+        
+        // Check if we have valid conscious state
+        if activityStack.getLastConsciousItem() == nil {
+            logger.error("Failed to get last conscious state in snapshot")
+        }
+        
         let entry = SimpleEntry(
             date: Date(),
             consciousState: activityStack.getLastConsciousItem()?.activityType ?? .wake,
@@ -34,24 +48,30 @@ struct Provider: TimelineProvider {
     }
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        // 1. Get current data state
         let activityStack = ActivityStack()
         activityStack.loadActivities(isWidget: true)
         
-        // Get activity data once
+        // Check if we have valid conscious state
+        if activityStack.getLastConsciousItem() == nil {
+            logger.error("Failed to get last conscious state in timeline")
+        }
+        
+        // Get activity data
         let consciousState = activityStack.getLastConsciousItem()?.activityType ?? .wake
         let lastActivityType = activityStack.getTopActivity()?.activityType
         let lastConsciousTime = activityStack.getLastConsciousItem()?.activityTime
         let lastMealTime = activityStack.getLastMealItem()?.activityTime
         
-        // 2. Generate entries at specified intervals
-        let calendar = Calendar.current
+        // Generate entries
         var entries: [SimpleEntry] = []
         let startDate = Date()
+        let calendar = Calendar.current
         
-        // Create entries for specified number of intervals
         for interval in 0..<numIntervals {
-            let entryDate = calendar.date(byAdding: .minute, value: interval * minPerInterval, to: startDate)!
+            guard let entryDate = calendar.date(byAdding: .minute, value: interval * minPerInterval, to: startDate) else {
+                logger.error("Failed to create entry date for interval \(interval)")
+                continue
+            }
             
             let entry = SimpleEntry(
                 date: entryDate,
@@ -59,16 +79,18 @@ struct Provider: TimelineProvider {
                 lastActivityType: lastActivityType,
                 lastConsciousTime: lastConsciousTime,
                 lastMealTime: lastMealTime,
-                isStaticUpdate: interval > 0  // First entry is data-based, rest are static
+                isStaticUpdate: interval > 0
             )
             entries.append(entry)
         }
         
-        // 3. Schedule next timeline refresh after the last entry
-        let nextRefreshDate = calendar.date(byAdding: .minute, value: numIntervals * minPerInterval, to: startDate)!
+        guard let refreshDate = calendar.date(byAdding: .minute, value: numIntervals * minPerInterval, to: startDate) else {
+            logger.error("Failed to create refresh date")
+            completion(Timeline(entries: entries, policy: .atEnd))
+            return
+        }
         
-        // Create timeline with all entries
-        let timeline = Timeline(entries: entries, policy: .after(nextRefreshDate))
+        let timeline = Timeline(entries: entries, policy: .after(refreshDate))
         completion(timeline)
     }
 }
@@ -253,8 +275,9 @@ struct NavWidget: Widget {
     }
 }
 
-// Updated Intent implementation
+// Updated Intent implementation with static logger
 struct AddSleepActivity: AppIntent {
+    static let logger = Logger(target: "NavWidget")
     static var title: LocalizedStringResource = "Add Sleep"
     static var description: LocalizedStringResource = "Records sleep activity"
     static var openAppWhenRun: Bool = false
@@ -262,6 +285,11 @@ struct AddSleepActivity: AppIntent {
     func perform() async throws -> some IntentResult {
         let activityStack = ActivityStack()
         activityStack.loadActivities(isWidget: true)
+        
+        if activityStack.getLastConsciousItem() == nil {
+            Self.logger.error("Failed to get last conscious state when adding sleep activity")
+        }
+        
         activityStack.pushActivity(ActivityItem(type: .sleep))
         activityStack.rerenderWidget()
         activityStack.notifyMainApp()

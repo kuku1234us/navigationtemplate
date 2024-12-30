@@ -32,7 +32,7 @@ struct AddTaskButton: View {
                     )
             }
             .frame(maxWidth: .infinity)
-            .padding(.bottom, NavigationState.bottomMenuHeight + 5)
+            .padding(.bottom, NavigationState.bottomMenuHeight + 10)
         }
     }
 }

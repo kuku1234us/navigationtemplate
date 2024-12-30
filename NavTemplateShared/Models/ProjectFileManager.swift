@@ -365,7 +365,7 @@ internal class ProjectFileManager {
     public func getIconPath(filename: String) -> URL? {
         guard let vaultURL = ObsidianVaultAccess.shared.vaultURL else { return nil }
         return vaultURL
-            .appendingPathComponent(".obsidian")
+            .appendingPathComponent("ObsidianWizSettings")
             .appendingPathComponent("icons")
             .appendingPathComponent(filename)
     }

@@ -127,10 +127,10 @@ struct TaskItemView: View {
                 let newStatus: TaskStatus
                 switch task.taskStatus {
                 case .notStarted:
-                    newStatus = .completed
-                case .completed:
                     newStatus = .inProgress
                 case .inProgress:
+                    newStatus = .completed
+                case .completed:
                     newStatus = .notStarted
                 @unknown default:
                     newStatus = .notStarted  // Default to notStarted for unknown cases
