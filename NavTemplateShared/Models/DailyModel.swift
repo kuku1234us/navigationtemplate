@@ -1,10 +1,12 @@
+// ./NavTemplateShared/Models/DailyModel.swift
+
 import SwiftUI
 import Combine
 import AppIntents
 import WidgetKit
 
 @available(iOS 16.0, *)
-public enum ActivityType: String, CaseIterable, AppEnum {
+public enum ActivityType: String, CaseIterable, AppEnum, Codable {
     case sleep = "Sleep"
     case wake = "Wake"
     case meal = "Meal"
@@ -27,7 +29,7 @@ public enum ActivityType: String, CaseIterable, AppEnum {
         case .exercise: return "figure.run.circle.fill"
         }
     }
-    
+
     public static var typeDisplayRepresentation: TypeDisplayRepresentation = "Activity Type"
     
     public static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
@@ -65,24 +67,13 @@ public enum ActivityType: String, CaseIterable, AppEnum {
     }
 }
 
-public struct Activity: Hashable {
-    public let type: ActivityType
-    
-    public init(type: ActivityType) {
-        self.type = type
-    }
-    
-    public var name: String { type.rawValue }
-    public var unfilledIcon: String { type.unfilledIcon }
-    public var filledIcon: String { type.filledIcon }
-}
-
-public struct ActivityItem: Identifiable {
-    public let id = UUID()
+public struct ActivityItem: Identifiable, Codable {
+    public let id: UUID
     public let activityType: ActivityType
     public let activityTime: Date
     
     public init(type: ActivityType, time: Date = Date()) {
+        self.id = UUID()
         self.activityType = type
         self.activityTime = time
     }
@@ -91,90 +82,216 @@ public struct ActivityItem: Identifiable {
 public class ActivityStack: ObservableObject {
     @Published public private(set) var items: [ActivityItem] = []
     private var isLoading = false
-    private let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
-    private var lastUpdateTime: TimeInterval = 0
+    private let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")     
     
+    /// Initializes ActivityStack and sets up UserDefaults observation
     public init() {
-        setupObserver()
         setupDefaultsObserver()
     }
     
+    /// Sets up observer for UserDefaults changes to detect widget updates
+    /// Processes pending activities when they exist
     private func setupDefaultsObserver() {
         NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: defaults,
             queue: .main
         ) { [weak self] _ in
-            if let updateTime = self?.defaults?.double(forKey: "LastActivityUpdate"),
-               updateTime > self?.lastUpdateTime ?? 0 {
-                self?.lastUpdateTime = updateTime
-                self?.loadActivities()
+            if let self = self,
+               let pendingData = self.defaults?.data(forKey: "PendingActivities"),
+               !pendingData.isEmpty {
+                self.processPendingActivities()
             }
         }
     }
     
-    public func loadActivities(isWidget: Bool = false) {
+    /// Updates LastKnownActivities in UserDefaults with latest timestamps from items array
+    /// This function assumes that all pending activities have been processed and items[] is sorted
+    private func updateLastKnownActivities() {
+        // Get current timestamps from UserDefaults
+        let currentLastKnown = getLastKnownActivitiesFromDefaults() ?? [:]
+        
+        // Start with copy of current timestamps
+        var newLastKnown = currentLastKnown
+        
+        // Update timestamps for activities we have in items[]
+        for type in ActivityType.allCases {
+            if let lastItem = items.last(where: { $0.activityType == type }) {
+                newLastKnown[type.rawValue.lowercased()] = Int(lastItem.activityTime.timeIntervalSince1970)
+            }
+        }
+        
+        // Compare if update is needed
+        if newLastKnown != currentLastKnown {
+            defaults?.set(newLastKnown, forKey: "LastKnownActivities")
+        }
+    }
+    
+    /// Retrieves the LastKnownActivities dictionary from UserDefaults
+    /// Returns a dictionary mapping activity types to their last known timestamps
+    private func getLastKnownActivitiesFromDefaults() -> [String: Int]? {
+        return defaults?.dictionary(forKey: "LastKnownActivities") as? [String: Int]
+    }
+    
+    /// Loads the most recent activities from the iCloud vault
+    /// Used by main app only, updates items array and LastKnownActivities
+    public func loadActivitiesFromVault() {
         guard !isLoading else { return }
         isLoading = true
         
-        do {
-            let activities = try QuarterFileManager.shared.loadLatestActivities(count: 50)
-            
-            if isWidget {
-                // In widget context, update directly
-                self.items = activities
-                self.isLoading = false
-            } else {
-                // In main app context, use main queue for UI updates
-                DispatchQueue.main.async {
-                    self.items = activities
-                    self.isLoading = false
-                }
-            }
-        } catch {
-            print("ActivityStack: Error loading activities: \(error)")
+        defer {
             isLoading = false
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+        
+        do {
+            // Load activities from vault
+            let activities = try QuarterFileManager.shared.loadLatestActivities(count: 50)
+            items = activities
+            
+            // Process any pending activities from widget
+            processPendingActivities()
+            
+            // Update LastKnownActivities with final state
+            updateLastKnownActivities()
+            
+        } catch {
+            Logger.shared.error("Failed to load activities from vault: \(error)")
         }
     }
     
-    public func pushActivity(_ item: ActivityItem) {
+    /// Adds a new activity to the iCloud vault and updates local state
+    /// Used by main app only
+    public func pushActivityToVault(_ item: ActivityItem) {
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+        
         do {
             try QuarterFileManager.shared.appendActivity(item)
-            DispatchQueue.main.async {
-                self.items.append(item)
-            }
+            items.append(item)
+            updateLastKnownActivities()
         } catch {
-            print("ActivityStack: Error pushing activity: \(error)")
+            Logger.shared.error("Failed to push activity to vault: \(error)")
         }
     }
     
-    public func popActivity() -> ActivityItem? {
-        guard !items.isEmpty else { return nil }
-        return items.removeLast()
+    /// Loads activities from UserDefaults into items array
+    /// Used by widget only, combines LastKnownActivities and PendingActivities
+    public func loadActivitiesFromDefaults() {
+        // Load LastKnownActivities timestamps
+        if let lastKnown = defaults?.dictionary(forKey: "LastKnownActivities") as? [String: Int] {
+            // Convert timestamps back to ActivityItems
+            var activities: [ActivityItem] = []
+            for (typeStr, timestamp) in lastKnown {
+                if let type = ActivityType(rawValue: typeStr.capitalized) {
+                    activities.append(ActivityItem(
+                        type: type,
+                        time: Date(timeIntervalSince1970: TimeInterval(timestamp))
+                    ))
+                }
+            }
+            self.items = activities.sorted(by: { $0.activityTime < $1.activityTime })
+            self.updateLastKnownActivities()  // Update timestamps after loading activities
+        }
+        
+        // Append any pending activities
+        if let pendingData = defaults?.data(forKey: "PendingActivities"),
+           let pendingActivities = try? JSONDecoder().decode([ActivityItem].self, from: pendingData) {
+            self.items.append(contentsOf: pendingActivities)
+            self.updateLastKnownActivities()  // Update timestamps again with pending activities
+        }
     }
     
-    public func getTopActivity() -> ActivityItem? {
-        return items.last
+    /// Adds activity to PendingActivities queue in UserDefaults
+    /// Used by widget only when it cannot directly access iCloud vault
+    public func pushActivityToQueue(_ item: ActivityItem) {
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+        
+        var pendingActivities: [ActivityItem] = []
+        if let data = defaults?.data(forKey: "PendingActivities"),
+           let existing = try? JSONDecoder().decode([ActivityItem].self, from: data) {
+            pendingActivities = existing
+        }
+        
+        pendingActivities.append(item)
+        
+        if let encoded = try? JSONEncoder().encode(pendingActivities) {
+            defaults?.set(encoded, forKey: "PendingActivities")
+            items.append(item)
+            updateLastKnownActivities()
+        }
     }
     
+    /// Processes activities in PendingActivities queue
+    /// Called when main app detects widget updates via UserDefaults changes
+    public func processPendingActivities() {
+        // Get pending activities
+        guard let data = defaults?.data(forKey: "PendingActivities"),
+              let pendingActivities = try? JSONDecoder().decode([ActivityItem].self, from: data) else {
+            return
+        }
+        
+        // Process all activities first
+        var successfulActivities: [ActivityItem] = []
+        for activity in pendingActivities {
+            do {
+                try QuarterFileManager.shared.appendActivity(activity)
+                successfulActivities.append(activity)
+            } catch {
+                Logger.shared.error("Failed to process pending activity: \(error)")
+            }
+        }
+        
+        // Clear pending queue first to avoid recursive calls
+        defaults?.removeObject(forKey: "PendingActivities")
+
+        // If we processed any activities successfully
+        if !successfulActivities.isEmpty {            
+            // Update items array
+            items.append(contentsOf: successfulActivities)
+            items.sort { $0.activityTime < $1.activityTime }
+            
+            // Update LastKnownActivities after clearing pending queue
+            updateLastKnownActivities()
+            
+            // Notify UI of changes
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
+    /// Returns the most recent sleep or wake activity
     public func getLastConsciousItem() -> ActivityItem? {
         return items.last { item in
             item.activityType == .sleep || item.activityType == .wake
         }
     }
     
+    /// Returns the most recent meal activity
     public func getLastMealItem() -> ActivityItem? {
         return items.last { item in
             item.activityType == .meal
         }
     }
     
+    /// Returns the most recent exercise activity
     public func getLastExerciseItem() -> ActivityItem? {
         return items.last { item in
             item.activityType == .exercise
         }
     }
     
+    /// Calculates time elapsed since the last occurrence of specified activity type
     public func timeSince(_ activityType: ActivityType) -> TimeInterval? {
         let item = items.last { item in
             item.activityType == activityType
@@ -183,26 +300,30 @@ public class ActivityStack: ObservableObject {
         return Date().timeIntervalSince(item.activityTime)
     }
     
-    public func timeInCurrentConsciousState() -> TimeInterval? {
-        guard let lastConscious = getLastConsciousItem() else { return nil }
-        return Date().timeIntervalSince(lastConscious.activityTime)
-    }
-    
+    /// Returns all activities in chronological order
     public var allItems: [ActivityItem] {
         return items
     }
     
+    /// Removes an activity from both iCloud vault and local state
     public func removeActivity(_ item: ActivityItem) {
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+        
         do {
             try QuarterFileManager.shared.removeActivity(item)
-            DispatchQueue.main.async {
-                self.items.removeAll { $0.id == item.id }
-            }
+            items.removeAll { $0.id == item.id }
+            updateLastKnownActivities()
         } catch {
             print("ActivityStack: Error removing activity: \(error)")
         }
     }
     
+    /// Updates an existing activity with new type and/or time
+    /// Updates both iCloud vault and local state
     public func updateActivity(_ originalItem: ActivityItem, withType newType: ActivityType, newTime: Date) {
         guard let index = items.firstIndex(where: { $0.id == originalItem.id }) else {
             print("ActivityStack: Cannot find item to update")
@@ -211,41 +332,31 @@ public class ActivityStack: ObservableObject {
         
         let newItem = ActivityItem(type: newType, time: newTime)
         
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+        
         do {
             try QuarterFileManager.shared.updateActivity(originalItem, to: newItem)
-            DispatchQueue.main.async {
-                self.items[index] = newItem
-            }
+            items[index] = newItem
+            updateLastKnownActivities()
         } catch {
             print("ActivityStack: Error updating activity: \(error)")
         }
     }
     
+    /// Triggers widget timeline regeneration to reflect latest changes
     public func rerenderWidget() {
         // This will trigger a new timeline generation with fresh data
         WidgetCenter.shared.reloadAllTimelines()
     }
     
+    /// Notifies main app of widget changes by updating LastKnownActivities
+    /// Only updates if changes are detected to avoid unnecessary writes
     public func notifyMainApp() {
-        defaults?.set(Date().timeIntervalSince1970, forKey: "LastActivityUpdate")
-        defaults?.synchronize()
-    }
-    
-    // Add observer setup
-    private func setupObserver() {
-        NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: defaults,
-            queue: .main
-        ) { [weak self] _ in
-            self?.checkForUpdates()
-        }
-    }
-    
-    private func checkForUpdates() {
-        // Reload activities if timestamp changed
-        if defaults?.object(forKey: "LastActivityUpdate") != nil {
-            self.loadActivities()
-        }
+        // Update LastKnownActivities only if needed
+        updateLastKnownActivities()
     }
 } 

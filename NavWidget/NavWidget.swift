@@ -1,26 +1,27 @@
-//
 //  NavWidget.swift
-//  NavWidget
-//
-//  Created by Mac14 on 12/13/24.
-//
 
 import WidgetKit
 import SwiftUI
 import AppIntents
 import NavTemplateShared
 
+// Add this at the top level of the file, before any struct definitions
+// This ensures Logger is initialized before any widget code runs
+private let _initializeLogger: Void = {
+    Logger.initialize(target: "NavWidget")
+}()
+
 struct Provider: TimelineProvider {
     // Configuration for timeline generation
     private let numIntervals = 60
     private let minPerInterval = 5
-    private let logger = Logger(target: "NavWidget")
     
     init() {
+        print("Time provider initialized")
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "HH:mm:ss"
         let timeString = dateFormatter.string(from: Date())
-        logger.info("NavWidget initialized at \(timeString)")
+        Logger.shared.info("NavWidget initialized at \(timeString)")
     }
     
     func placeholder(in context: Context) -> SimpleEntry {
@@ -29,17 +30,12 @@ struct Provider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
         let activityStack = ActivityStack()
-        activityStack.loadActivities(isWidget: true)
-        
-        // Check if we have valid conscious state
-        if activityStack.getLastConsciousItem() == nil {
-            logger.error("Failed to get last conscious state in snapshot")
-        }
+        activityStack.loadActivitiesFromDefaults()
         
         let entry = SimpleEntry(
             date: Date(),
             consciousState: activityStack.getLastConsciousItem()?.activityType ?? .wake,
-            lastActivityType: activityStack.getTopActivity()?.activityType,
+            lastActivityType: activityStack.allItems.last?.activityType,
             lastConsciousTime: activityStack.getLastConsciousItem()?.activityTime,
             lastMealTime: activityStack.getLastMealItem()?.activityTime,
             isStaticUpdate: false
@@ -48,50 +44,93 @@ struct Provider: TimelineProvider {
     }
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
+        print("getTimeline...")
         let activityStack = ActivityStack()
-        activityStack.loadActivities(isWidget: true)
-        
-        // Check if we have valid conscious state
-        if activityStack.getLastConsciousItem() == nil {
-            logger.error("Failed to get last conscious state in timeline")
-        }
+        activityStack.loadActivitiesFromDefaults()
         
         // Get activity data
         let consciousState = activityStack.getLastConsciousItem()?.activityType ?? .wake
-        let lastActivityType = activityStack.getTopActivity()?.activityType
+        let lastActivityType = activityStack.allItems.last?.activityType
         let lastConsciousTime = activityStack.getLastConsciousItem()?.activityTime
         let lastMealTime = activityStack.getLastMealItem()?.activityTime
         
+        // Check if this is a user-initiated update
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+        let currentMinute = calendar.date(from: components)?.timeIntervalSince1970 ?? 0
+        let lastActionTime = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")?
+            .double(forKey: "LastWidgetActionTime") ?? 0
+
+        let actionDateFormatter = DateFormatter()
+        actionDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let lastActionTimeDate = Date(timeIntervalSince1970: lastActionTime)
+        print("Last action time: \(actionDateFormatter.string(from: lastActionTimeDate))")
+        
+        let isUserInitiated = currentMinute <= lastActionTime
+        print("isUserInitiated: \(isUserInitiated)")
+        
         // Generate entries
         var entries: [SimpleEntry] = []
-        let startDate = Date()
-        let calendar = Calendar.current
         
-        for interval in 0..<numIntervals {
-            guard let entryDate = calendar.date(byAdding: .minute, value: interval * minPerInterval, to: startDate) else {
-                logger.error("Failed to create entry date for interval \(interval)")
-                continue
-            }
-            
-            let entry = SimpleEntry(
-                date: entryDate,
+        if isUserInitiated {
+            // For user-initiated updates, create just 2 entries:
+            // 1. Immediate entry
+            // 2. Entry for next minute to ensure refresh
+            entries.append(SimpleEntry(
+                date: now,
                 consciousState: consciousState,
                 lastActivityType: lastActivityType,
                 lastConsciousTime: lastConsciousTime,
                 lastMealTime: lastMealTime,
-                isStaticUpdate: interval > 0
-            )
-            entries.append(entry)
+                isStaticUpdate: false
+            ))
+            
+            if let nextMinute = calendar.date(byAdding: .minute, value: 1, to: now) {
+                entries.append(SimpleEntry(
+                    date: nextMinute,
+                    consciousState: consciousState,
+                    lastActivityType: lastActivityType,
+                    lastConsciousTime: lastConsciousTime,
+                    lastMealTime: lastMealTime,
+                    isStaticUpdate: true
+                ))
+            }
+                // Force a quick refresh after the 2nd entry time
+                let refreshDate = entries.last?.date.addingTimeInterval(1) ?? Date().addingTimeInterval(60)
+                print("For user-initiated: next refresh at \(refreshDate)")
+                
+                completion(
+                    Timeline(entries: entries, policy: .after(refreshDate))
+                )
+                return
+        } else {
+            // For system updates, create full timeline
+            for interval in 0..<numIntervals {
+                guard let entryDate = calendar.date(byAdding: .minute, 
+                                                  value: interval * minPerInterval, 
+                                                  to: now) else { continue }
+                
+                entries.append(SimpleEntry(
+                    date: entryDate,
+                    consciousState: consciousState,
+                    lastActivityType: lastActivityType,
+                    lastConsciousTime: lastConsciousTime,
+                    lastMealTime: lastMealTime,
+                    isStaticUpdate: interval > 0
+                ))
+            }
         }
         
-        guard let refreshDate = calendar.date(byAdding: .minute, value: numIntervals * minPerInterval, to: startDate) else {
-            logger.error("Failed to create refresh date")
-            completion(Timeline(entries: entries, policy: .atEnd))
-            return
-        }
+        // Always set next refresh to be after the last entry
+        let refreshDate = entries.last?.date ?? Date().addingTimeInterval(60)
         
-        let timeline = Timeline(entries: entries, policy: .after(refreshDate))
-        completion(timeline)
+        // Format and print refresh date
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        print("NextRef: \(formatter.string(from: refreshDate)) entries: \(entries.count)")
+        
+        completion(Timeline(entries: entries, policy: .atEnd))  // Changed to .atEnd
     }
 }
 
@@ -258,6 +297,11 @@ struct NavWidgetEntryView : View {
 struct NavWidget: Widget {
     let kind: String = "NavWidget"
     
+    init() {
+        // Force evaluation of the initializer
+        _ = _initializeLogger
+    }
+    
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             NavWidgetEntryView(entry: entry)
@@ -275,22 +319,32 @@ struct NavWidget: Widget {
     }
 }
 
+// Helper extension for AppIntents
+extension AppIntent {
+    func recordActionTime() {
+        let calendar = Calendar.current
+        let now = Date()
+        // Zero out seconds and nanoseconds
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+        if let minute = calendar.date(from: components) {
+            UserDefaults(suiteName: "group.us.kothreat.NavTemplate")?
+                .set(minute.timeIntervalSince1970, forKey: "LastWidgetActionTime")
+        }
+    }
+}
+
 // Updated Intent implementation with static logger
 struct AddSleepActivity: AppIntent {
-    static let logger = Logger(target: "NavWidget")
     static var title: LocalizedStringResource = "Add Sleep"
     static var description: LocalizedStringResource = "Records sleep activity"
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
+        recordActionTime()
+        
         let activityStack = ActivityStack()
-        activityStack.loadActivities(isWidget: true)
-        
-        if activityStack.getLastConsciousItem() == nil {
-            Self.logger.error("Failed to get last conscious state when adding sleep activity")
-        }
-        
-        activityStack.pushActivity(ActivityItem(type: .sleep))
+        activityStack.loadActivitiesFromDefaults()
+        activityStack.pushActivityToQueue(ActivityItem(type: .sleep))
         activityStack.rerenderWidget()
         activityStack.notifyMainApp()
         return .result()
@@ -303,9 +357,11 @@ struct AddWakeActivity: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
+        recordActionTime()
+        
         let activityStack = ActivityStack()
-        activityStack.loadActivities(isWidget: true)
-        activityStack.pushActivity(ActivityItem(type: .wake))
+        activityStack.loadActivitiesFromDefaults()
+        activityStack.pushActivityToQueue(ActivityItem(type: .wake))
         activityStack.rerenderWidget()
         activityStack.notifyMainApp()
         return .result()
@@ -318,9 +374,11 @@ struct AddMealActivity: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
+        recordActionTime()
+        
         let activityStack = ActivityStack()
-        activityStack.loadActivities(isWidget: true)
-        activityStack.pushActivity(ActivityItem(type: .meal))
+        activityStack.loadActivitiesFromDefaults()
+        activityStack.pushActivityToQueue(ActivityItem(type: .meal))
         activityStack.rerenderWidget()
         activityStack.notifyMainApp()
         return .result()
@@ -333,9 +391,11 @@ struct AddExerciseActivity: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
+        recordActionTime()
+        
         let activityStack = ActivityStack()
-        activityStack.loadActivities(isWidget: true)
-        activityStack.pushActivity(ActivityItem(type: .exercise))
+        activityStack.loadActivitiesFromDefaults()
+        activityStack.pushActivityToQueue(ActivityItem(type: .exercise))
         activityStack.rerenderWidget()
         activityStack.notifyMainApp()
         return .result()

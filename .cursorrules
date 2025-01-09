@@ -3,4 +3,4 @@ When creating a new view, do not create a preview for it.
 When creating a .md documentation, do not put "# Title Of Document" at the top of the document, since the filename is the title.
 The "# Introduction" should be the first thing in the document.
 
-When providing code updates, respect the existing comments already in place and include them in the code update. Change a comment when appropriate. Add new comments where appropriate.
+When providing code updates, respect the existing comments already in place and include them in the proposed code update. Change a comment when appropriate. Add new comments where appropriate.

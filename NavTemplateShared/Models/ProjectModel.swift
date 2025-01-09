@@ -201,6 +201,7 @@ public class ProjectModel: ObservableObject {
             newSettings.projectOrder = projectOrder
         }
         settings = newSettings
+        saveProjectsToUserDefaults()
     }
     
     // Helper method to check if a project is selected
@@ -222,9 +223,11 @@ public class ProjectModel: ObservableObject {
     @MainActor
     public func loadProjects() async {
         do {
+            // 1. Load all project files from iCloud
             let projectFiles = try ProjectFileManager.shared.findAllProjectFiles()
             var projectMetadata: [ProjectMetadata] = []
             
+            // 2. Parse each project file
             for fileURL in projectFiles {
                 if let metadata = try parseProjectMetadata(from: fileURL) {
                     // Check if this is an existing project with a different icon
@@ -239,15 +242,16 @@ public class ProjectModel: ObservableObject {
                 }
             }
             
-            // Get set of all current project IDs
+            // 3. Get set of all current project IDs
             let currentProjectIds = Set(projectMetadata.map { $0.projId })
             
-            // Find new projects (in current load but not in settings)
+            // 4. Find new projects (in current load but not in settings)
             let newProjectIds = currentProjectIds.subtracting(Set(settings.projectOrder))
             
             // Find removed projects (in settings but not in current load)
             let removedProjectIds = Set(settings.projectOrder).subtracting(currentProjectIds)
             
+            // 5. Update settings if needed
             if !newProjectIds.isEmpty || !removedProjectIds.isEmpty {
                 var updatedOrder = settings.projectOrder
                 var updatedSelected = settings.selectedProjects
@@ -267,11 +271,12 @@ public class ProjectModel: ObservableObject {
                 )
             }
             
-            // Sort by modified time, newest first
+            // 6. Sort by modified time
             projectMetadata.sort { $0.modifiedTime > $1.modifiedTime }
             
-            // Assign immediately so other components can access
+            // 7. Update model and notify UI
             self.projects = projectMetadata
+            saveProjectsToUserDefaults()
             self.objectWillChange.send()
         } catch {
             print("Error loading projects: \(error)")
@@ -405,6 +410,75 @@ public class ProjectModel: ObservableObject {
             let index1 = orderDict[project1.projId] ?? Int.max
             let index2 = orderDict[project2.projId] ?? Int.max
             return index1 < index2
+        }
+    }
+    
+    private struct SerializableProjectMetadata: Codable {
+        let projId: Int64
+        let banner: URL?
+        let projectStatus: String
+        let noteType: String
+        let creationTime: Date
+        let modifiedTime: Date
+        let filePath: String
+        let icon: String?
+        let iconData: Data?  // For widget access
+        
+        init(from project: ProjectMetadata) {
+            self.projId = project.projId
+            self.banner = project.banner
+            self.projectStatus = project.projectStatus.rawValue
+            self.noteType = project.noteType
+            self.creationTime = project.creationTime
+            self.modifiedTime = project.modifiedTime
+            self.filePath = project.filePath
+            self.icon = project.icon
+            
+            // Convert icon to Data if it exists
+            if let iconName = project.icon,
+               let iconImage = ImageCache.shared.getImage(from: iconName) {
+                self.iconData = iconImage.pngData()
+            } else {
+                self.iconData = nil
+            }
+        }
+    }
+    
+    /// Updates UserDefaults with current projects state for widget access
+    private func saveProjectsToUserDefaults() {
+        let serializableProjects = projects.map { SerializableProjectMetadata(from: $0) }
+        if let encoded = try? JSONEncoder().encode(serializableProjects) {
+            UserDefaults(suiteName: "group.us.kothreat.NavTemplate")?
+                .set(encoded, forKey: "CachedProjects")
+        }
+    }
+    
+    /// Loads projects from UserDefaults (used by widget)
+    public func loadProjectsFromDefaults() -> [ProjectMetadata] {
+        guard let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate"),
+              let data = defaults.data(forKey: "CachedProjects"),
+              let serializableProjects = try? JSONDecoder().decode([SerializableProjectMetadata].self, from: data) else {
+            return []
+        }
+        
+        return serializableProjects.map { cached in
+            // Cache icon if available
+            if let iconName = cached.icon, 
+               let iconData = cached.iconData,
+               let image = UIImage(data: iconData) {
+                ImageCache.shared.storeImage(image, forKey: iconName)
+            }
+            
+            return ProjectMetadata(
+                projId: cached.projId,
+                banner: cached.banner,
+                projectStatus: ProjectStatus.from(cached.projectStatus),
+                noteType: cached.noteType,
+                creationTime: cached.creationTime,
+                modifiedTime: cached.modifiedTime,
+                filePath: cached.filePath,
+                icon: cached.icon
+            )
         }
     }
 }

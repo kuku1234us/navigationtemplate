@@ -17,8 +17,8 @@ struct ActivitiesPaneView: View {
         self.layout = layout
         self.consciousState = consciousState
         let activityStack = ActivityStack()
-        activityStack.loadActivities(isWidget: true)
-        _lastActivityType = State(initialValue: activityStack.getTopActivity()?.activityType)
+        activityStack.loadActivitiesFromDefaults()
+        _lastActivityType = State(initialValue: activityStack.allItems.last?.activityType)
     }
     
     private func activityButton(_ type: ActivityType) -> some View {
@@ -49,6 +49,12 @@ struct ActivitiesPaneView: View {
         .buttonStyle(PlainButtonStyle())
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.5 : 1.0)
+        .onChange(of: isLastActivity) { _, _ in
+            // Trigger immediate UI update
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self.lastActivityType = type
+            }
+        }
     }
     
     var body: some View {

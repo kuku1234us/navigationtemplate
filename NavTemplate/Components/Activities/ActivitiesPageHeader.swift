@@ -9,7 +9,7 @@ struct ActivitiesPageHeader: View {
     
     // Add timer to update display
     @State private var currentTime = Date()
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     
     private func formatTimeSince(_ date: Date?) -> String {
         guard let date = date else { return "00:00" }

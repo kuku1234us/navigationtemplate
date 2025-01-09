@@ -5,7 +5,7 @@ struct TimeAndActivityPickerDialog: View {
     let editingItem: ActivityItem  // Add reference to original item
     let onSave: (ActivityItem, ActivityType, Date) -> Void  // Pass original item in callback
     
-    @State private var selectedActivity: Activity
+    @State private var selectedActivity: ActivityType
     @State private var selectedHour: Int
     @State private var selectedMinute: Int
     
@@ -17,7 +17,7 @@ struct TimeAndActivityPickerDialog: View {
         self.onSave = onSave
         
         let calendar = Calendar.current
-        _selectedActivity = State(initialValue: Activity(type: editingItem.activityType))
+        _selectedActivity = State(initialValue: editingItem.activityType)
         _selectedHour = State(initialValue: calendar.component(.hour, from: editingItem.activityTime))
         _selectedMinute = State(initialValue: calendar.component(.minute, from: editingItem.activityTime))
     }
@@ -30,7 +30,7 @@ struct TimeAndActivityPickerDialog: View {
         return calendar.date(from: components) ?? editingItem.activityTime
     }
     
-    private let activities: [Activity] = ActivityType.allCases.map { Activity(type: $0) }
+    private let activities: [ActivityType] = ActivityType.allCases
     
     var body: some View {
         VStack(spacing: 0) {
@@ -63,7 +63,7 @@ struct TimeAndActivityPickerDialog: View {
             
             Button(action: {
                 let selectedDate = createSelectedDate()
-                onSave(editingItem, selectedActivity.type, selectedDate)
+                onSave(editingItem, selectedActivity, selectedDate)
             })
             {
                 ZStack {
@@ -87,17 +87,17 @@ struct TimeAndActivityPickerDialog: View {
 }
 
 private struct ActivityPicker: View {
-    @Binding var selection: Activity
-    let activities: [Activity]
+    @Binding var selection: ActivityType
+    let activities: [ActivityType]
     
     var body: some View {
         PickerViewWithoutIndicator(id: "Activity", selection: $selection) {
-            ForEach(activities, id: \.self) { activity in
+            ForEach(activities, id: \.rawValue) { activity in
                 HStack(spacing: 8) {
                     Image(systemName: selection == activity ? activity.filledIcon : activity.unfilledIcon)
                         .contentTransition(.symbolEffect(.replace.offUp.byLayer))
                         .foregroundColor(selection == activity ? .accentColor : .gray)                        
-                    Text(activity.name)
+                    Text(activity.rawValue)
                 }
                 .frame(width: 120, alignment: .center)
                 .tag(activity)

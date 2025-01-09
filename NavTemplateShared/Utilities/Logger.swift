@@ -2,6 +2,28 @@ import Foundation
 import Combine
 
 public class Logger: @unchecked Sendable {
+    // Private static instance
+    private static var _shared: Logger?
+    
+    // Public shared instance accessor
+    public static var shared: Logger {
+        get {
+            if _shared == nil {
+                fatalError("Logger not initialized. Call Logger.initialize(target:) first")
+            }
+            return _shared!
+        }
+    }
+    
+    // Public initializer to be called by main targets only
+    public static func initialize(target: String) {
+        guard _shared == nil else {
+            print("Warning: Logger already initialized")
+            return
+        }
+        _shared = Logger(target: target)
+    }
+    
     private let target: String
     private let userDefaults: UserDefaults
     private let logsKey = "AppLogs"
@@ -13,7 +35,8 @@ public class Logger: @unchecked Sendable {
         case error = "【Error】"
     }
     
-    public init(target: String) {
+    // Make init private to prevent direct instantiation
+    private init(target: String) {
         self.target = target
         self.userDefaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate") ?? .standard
     }
@@ -119,17 +142,6 @@ public class Logger: @unchecked Sendable {
         
         return logList
     }
-}
-
-// Singleton instance for easy access
-extension Logger {
-    public static var shared: Logger = {
-        #if os(iOS)
-        return Logger(target: "NavTemplate")
-        #else
-        return Logger(target: "NavWidget")
-        #endif
-    }()
 }
 
 @available(iOS 13.0, *)

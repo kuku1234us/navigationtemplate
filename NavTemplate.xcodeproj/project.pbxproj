@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		8507D1E52D0CBEF600DC7F4F /* NavTemplateShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; };
 		8507D1E62D0CBEF600DC7F4F /* NavTemplateShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		851402142D2D51D700E7804F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43BA2D0BFA7000593B9A /* WidgetKit.framework */; };
+		851402152D2D51D700E7804F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43BC2D0BFA7300593B9A /* SwiftUI.framework */; };
+		851402262D2D51DE00E7804F /* TaskWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 851402132D2D51D500E7804F /* TaskWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		855F43BB2D0BFA7300593B9A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43BA2D0BFA7000593B9A /* WidgetKit.framework */; };
 		855F43BD2D0BFA7300593B9A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43BC2D0BFA7300593B9A /* SwiftUI.framework */; };
 		855F43CE2D0BFA7500593B9A /* ActivitiesWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 855F43B82D0BFA7000593B9A /* ActivitiesWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -24,6 +27,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 855F43D92D0CA0C400593B9A;
 			remoteInfo = NavTemplateShared;
+		};
+		851402242D2D51DD00E7804F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 855E4E9E2CFC3B70002E12D4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 851402122D2D51D500E7804F;
+			remoteInfo = TaskWidgetExtension;
 		};
 		855E4EB72CFC3B72002E12D4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -88,6 +98,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				855F43CE2D0BFA7500593B9A /* ActivitiesWidgetExtension.appex in Embed Foundation Extensions */,
+				851402262D2D51DE00E7804F /* TaskWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -106,6 +117,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		851402132D2D51D500E7804F /* TaskWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TaskWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8514022B2D2D647400E7804F /* TaskWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TaskWidgetExtension.entitlements; sourceTree = "<group>"; };
 		855E4EA62CFC3B70002E12D4 /* iOSWiz.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSWiz.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		855E4EB62CFC3B72002E12D4 /* NavTemplateTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NavTemplateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		855E4EC02CFC3B72002E12D4 /* NavTemplateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NavTemplateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -118,6 +131,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		851402292D2D51DE00E7804F /* Exceptions for "TaskWidget" folder in "TaskWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 851402122D2D51D500E7804F /* TaskWidgetExtension */;
+		};
 		855F43D22D0BFA7500593B9A /* Exceptions for "NavWidget" folder in "ActivitiesWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -135,6 +155,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		851402162D2D51D700E7804F /* TaskWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				851402292D2D51DE00E7804F /* Exceptions for "TaskWidget" folder in "TaskWidgetExtension" target */,
+			);
+			path = TaskWidget;
+			sourceTree = "<group>";
+		};
 		855E4EA82CFC3B70002E12D4 /* NavTemplate */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = NavTemplate;
@@ -174,6 +202,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		851402102D2D51D500E7804F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				851402152D2D51D700E7804F /* SwiftUI.framework in Frameworks */,
+				851402142D2D51D700E7804F /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		855E4EA32CFC3B70002E12D4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -227,6 +264,7 @@
 		855E4E9D2CFC3B70002E12D4 = {
 			isa = PBXGroup;
 			children = (
+				8514022B2D2D647400E7804F /* TaskWidgetExtension.entitlements */,
 				855F43D42D0BFB9B00593B9A /* NavWidgetExtension.entitlements */,
 				855E4EA82CFC3B70002E12D4 /* NavTemplate */,
 				855E4EB92CFC3B72002E12D4 /* NavTemplateTests */,
@@ -234,6 +272,7 @@
 				855F43BE2D0BFA7300593B9A /* NavWidget */,
 				855F43DB2D0CA0C400593B9A /* NavTemplateShared */,
 				855F43E92D0CA0C700593B9A /* NavTemplateSharedTests */,
+				851402162D2D51D700E7804F /* TaskWidget */,
 				855F43B92D0BFA7000593B9A /* Frameworks */,
 				855E4EA72CFC3B70002E12D4 /* Products */,
 			);
@@ -248,6 +287,7 @@
 				855F43B82D0BFA7000593B9A /* ActivitiesWidgetExtension.appex */,
 				855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */,
 				855F43E32D0CA0C700593B9A /* NavTemplateSharedTests.xctest */,
+				851402132D2D51D500E7804F /* TaskWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -274,6 +314,28 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		851402122D2D51D500E7804F /* TaskWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8514022A2D2D51DE00E7804F /* Build configuration list for PBXNativeTarget "TaskWidgetExtension" */;
+			buildPhases = (
+				8514020F2D2D51D500E7804F /* Sources */,
+				851402102D2D51D500E7804F /* Frameworks */,
+				851402112D2D51D500E7804F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				851402162D2D51D700E7804F /* TaskWidget */,
+			);
+			name = TaskWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = TaskWidgetExtension;
+			productReference = 851402132D2D51D500E7804F /* TaskWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		855E4EA52CFC3B70002E12D4 /* iOSWiz */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 855E4ECA2CFC3B72002E12D4 /* Build configuration list for PBXNativeTarget "iOSWiz" */;
@@ -289,6 +351,7 @@
 			dependencies = (
 				855F43CD2D0BFA7500593B9A /* PBXTargetDependency */,
 				855F43EE2D0CA0C700593B9A /* PBXTargetDependency */,
+				851402252D2D51DD00E7804F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				855E4EA82CFC3B70002E12D4 /* NavTemplate */,
@@ -427,6 +490,9 @@
 				LastSwiftUpdateCheck = 1610;
 				LastUpgradeCheck = 1610;
 				TargetAttributes = {
+					851402122D2D51D500E7804F = {
+						CreatedOnToolsVersion = 16.1;
+					};
 					855E4EA52CFC3B70002E12D4 = {
 						CreatedOnToolsVersion = 16.1;
 					};
@@ -472,11 +538,19 @@
 				855F43B72D0BFA7000593B9A /* ActivitiesWidgetExtension */,
 				855F43D92D0CA0C400593B9A /* NavTemplateShared */,
 				855F43E22D0CA0C700593B9A /* NavTemplateSharedTests */,
+				851402122D2D51D500E7804F /* TaskWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		851402112D2D51D500E7804F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		855E4EA42CFC3B70002E12D4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -522,6 +596,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		8514020F2D2D51D500E7804F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		855E4EA22CFC3B70002E12D4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -572,6 +653,11 @@
 			target = 855F43D92D0CA0C400593B9A /* NavTemplateShared */;
 			targetProxy = 8507D1E72D0CBEF600DC7F4F /* PBXContainerItemProxy */;
 		};
+		851402252D2D51DD00E7804F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 851402122D2D51D500E7804F /* TaskWidgetExtension */;
+			targetProxy = 851402242D2D51DD00E7804F /* PBXContainerItemProxy */;
+		};
 		855E4EB82CFC3B72002E12D4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 855E4EA52CFC3B70002E12D4 /* iOSWiz */;
@@ -605,6 +691,62 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		851402272D2D51DE00E7804F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = TaskWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U3ZF79B4TR;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TaskWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TaskWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = us.kothreat.NavTemplate.TaskWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		851402282D2D51DE00E7804F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = TaskWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U3ZF79B4TR;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TaskWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TaskWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = us.kothreat.NavTemplate.TaskWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		855E4EC82CFC3B72002E12D4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1021,6 +1163,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8514022A2D2D51DE00E7804F /* Build configuration list for PBXNativeTarget "TaskWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				851402272D2D51DE00E7804F /* Debug */,
+				851402282D2D51DE00E7804F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		855E4EA12CFC3B70002E12D4 /* Build configuration list for PBXProject "NavTemplate" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

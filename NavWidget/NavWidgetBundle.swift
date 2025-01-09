@@ -12,7 +12,6 @@ import SwiftUI
 struct NavWidgetBundle: WidgetBundle {
     var body: some Widget {
         NavWidget()
-        NavWidgetControl()
         NavWidgetLiveActivity()
     }
 }

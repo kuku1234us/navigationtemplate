@@ -1,3 +1,5 @@
+// This is ./NavTemplateShared/Models/QuarterFileManager.swift
+
 import Foundation
 
 class QuarterFileManager {
@@ -42,11 +44,19 @@ class QuarterFileManager {
     }
     
     // MARK: - Helper Methods
-    private func getQuarterInfo(for date: Date = Date()) -> (year: String, quarter: Int) {
+    private func getQuarterInfo(for date: Date = Date(), previous: Bool = false) -> (year: String, quarter: Int) {
         let calendar = Calendar.current
         let year = calendar.component(.year, from: date)
         let month = calendar.component(.month, from: date)
         let quarter = ((month - 1) / 3) + 1
+        
+        if previous {
+            if quarter > 1 {
+                return (String(year), quarter - 1)
+            } else {
+                return (String(year - 1), 4)
+            }
+        }
         
         return (String(year), quarter)
     }
@@ -117,10 +127,12 @@ class QuarterFileManager {
     
     func loadLatestActivities(count: Int) throws -> [ActivityItem] {
         guard let vault = vaultURL else {
+            Logger.shared.error("[E001] No vault URL available for loading activities")
             throw QuarterFileError.noVaultAccess
         }
         
         guard vault.startAccessingSecurityScopedResource() else {
+            Logger.shared.error("[E002] Failed to get security-scoped access to vault")
             throw QuarterFileError.noVaultAccess
         }
         defer { vault.stopAccessingSecurityScopedResource() }
@@ -132,87 +144,107 @@ class QuarterFileManager {
             let baseURL = url.appendingPathComponent(baseDirectory)
             let (currentYear, currentQuarter) = getQuarterInfo()
             
-            // Start from current quarter and go backwards
-            var year = Int(currentYear)!
-            var quarter = currentQuarter
+            // Get current quarter file path
+            let currentQuarterFile = getQuarterFilePath(year: currentYear, quarter: currentQuarter, baseURL: baseURL)
             
-            while activities.count < count {
-                let quarterFile = getQuarterFilePath(year: String(year), quarter: quarter, baseURL: baseURL)
+            // Load activities from current quarter
+            if FileManager.default.fileExists(atPath: currentQuarterFile.path) {
+                activities.append(contentsOf: readActivitiesFromFile(currentQuarterFile))
+            }
+            
+            // If we don't have enough activities, try previous quarter
+            if activities.count < count {
+                let (previousYear, previousQuarter) = getQuarterInfo(previous: true)
+                let previousQuarterFile = getQuarterFilePath(year: previousYear, quarter: previousQuarter, baseURL: baseURL)
                 
-                if FileManager.default.fileExists(atPath: quarterFile.path) {
-                    guard let fileHandle = try? FileHandle(forReadingFrom: quarterFile) else {
-                        continue
-                    }
-                    defer { try? fileHandle.close() }
-                    
-                    // Get file size
-                    let fileSize = try? fileHandle.seekToEnd()
-                    guard let size = fileSize else { continue }
-                    
-                    // Read in chunks from end
-                    let chunkSize: UInt64 = 4096  // 4KB chunks
-                    var offset = size
-                    var foundActivities: [ActivityItem] = []
-                    
-                    while offset > 0 && foundActivities.count < count {
-                        let readSize = min(chunkSize, offset)
-                        offset = offset - readSize
-                        
-                        try? fileHandle.seek(toOffset: offset)
-                        guard let data = try? fileHandle.read(upToCount: Int(readSize)),
-                              let chunk = String(data: data, encoding: .utf8) else {
-                            continue
-                        }
-                        
-                        // Parse chunk into activities
-                        let newActivities = chunk.cleansedLines()
-                            .compactMap { line -> ActivityItem? in
-                                let components = line.components(separatedBy: ":: ")
-                                guard components.count == 2,
-                                      let activityType = ActivityType(rawValue: components[0]),
-                                      let timestamp = Double(components[1]) else {
-                                    return nil
-                                }
-                                return ActivityItem(
-                                    type: activityType,
-                                    time: Date(timeIntervalSince1970: timestamp)
-                                )
-                            }
-                        
-                        foundActivities.append(contentsOf: newActivities)
-                    }
-                    
-                    activities.append(contentsOf: foundActivities)
-                }
-                
-                if activities.count >= count {
-                    break
-                }
-                
-                // Move to previous quarter
-                quarter -= 1
-                if quarter < 1 {
-                    quarter = 4
-                    year -= 1
-                }
-                
-                // Stop if we go too far back
-                if year < Int(currentYear)! - 2 {
-                    break
+                if FileManager.default.fileExists(atPath: previousQuarterFile.path) {
+                    activities.append(contentsOf: readActivitiesFromFile(previousQuarterFile))
                 }
             }
         }
         
         if let error = coordinatorError {
-            print("QuarterFileManager: Coordinator error: \(error)")
+            Logger.shared.error("[E009] File coordinator error: \(error.localizedDescription)")
             throw QuarterFileError.fileOperationFailed(error.localizedDescription)
         }
         
         // Sort and take only what we need
-        return activities
+        let sortedActivities = activities
             .sorted { $0.activityTime > $1.activityTime }
             .prefix(count)
             .reversed()
+        
+        if sortedActivities.isEmpty {
+            Logger.shared.error("[E010] No activities found in current and previous quarter files")
+        }
+        
+        return Array(sortedActivities)
+    }
+    
+    // Helper method to read activities from a file
+    private func readActivitiesFromFile(_ file: URL) -> [ActivityItem] {
+        var activities: [ActivityItem] = []
+        
+        guard let fileHandle = try? FileHandle(forReadingFrom: file) else {
+            Logger.shared.error("[E003] Failed to create file handle for \(file.lastPathComponent)")
+            return activities
+        }
+        defer { try? fileHandle.close() }
+        
+        // Get file size
+        guard let size = try? fileHandle.seekToEnd() else {
+            Logger.shared.error("[E004] Failed to get file size for \(file.lastPathComponent)")
+            return activities
+        }
+        
+        // Read in chunks from end
+        let chunkSize: UInt64 = 4096  // 4KB chunks
+        var offset = size
+        
+        while offset > 0 {
+            let readSize = min(chunkSize, offset)
+            offset = offset - readSize
+            
+            do {
+                try fileHandle.seek(toOffset: offset)
+                guard let data = try? fileHandle.read(upToCount: Int(readSize)),
+                      let chunk = String(data: data, encoding: .utf8) else {
+                    Logger.shared.error("[E005] Failed to read chunk at offset \(offset) in \(file.lastPathComponent)")
+                    continue
+                }
+                
+                // Parse chunk into activities
+                let newActivities = chunk.cleansedLines()
+                    .compactMap { line -> ActivityItem? in
+                        let components = line.components(separatedBy: ":: ")
+                        guard components.count == 2,
+                              let activityType = ActivityType(rawValue: components[0]),
+                              let timestamp = Double(components[1]) else {
+                            Logger.shared.error("[E006] Failed to parse line: '\(line)' in \(file.lastPathComponent)")
+                            return nil
+                        }
+                        return ActivityItem(
+                            type: activityType,
+                            time: Date(timeIntervalSince1970: timestamp)
+                        )
+                    }
+                
+                activities.append(contentsOf: newActivities)
+            } catch {
+                Logger.shared.error("[E007] Error reading chunk: \(error.localizedDescription) in \(file.lastPathComponent)")
+            }
+        }
+        
+        return activities
+    }
+    
+    // Helper method to get previous quarter info
+    private func getPreviousQuarterInfo(year: String, quarter: Int) -> (year: String, quarter: Int) {
+        if quarter > 1 {
+            return (year, quarter - 1)
+        } else {
+            return (String(Int(year)! - 1), 4)
+        }
     }
     
     func removeActivity(_ activity: ActivityItem) throws {

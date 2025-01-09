@@ -49,7 +49,7 @@ struct LogListEntryView: View {
             
             // Log entries (shown only when expanded)
             if isExpanded {
-                ForEach(logListEntry.logs, id: \.self) { log in
+                ForEach(Array(logListEntry.logs.enumerated()), id: \.offset) { index, log in
                     LogEntryView(logEntry: log)
                 }
             }

@@ -20,31 +20,10 @@ struct ActivitiesPage: Page {
     
     @State private var lastUpdateTime: TimeInterval = 0
     
-    private let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
-    
     @Environment(\.scenePhase) private var scenePhase
-    
-    private func setupDefaultsObserver() {
-        // Observe UserDefaults changes
-        NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: defaults,
-            queue: .main
-        ) { _ in
-            if let updateTime = defaults?.double(forKey: "LastActivityUpdate"),
-               updateTime > lastUpdateTime {
-                lastUpdateTime = updateTime
-                updateStateFromStack()
-                activityStack.loadActivities()  // Reload data
-            }
-        }
-    }
     
     var body: some View {
         makeMainContent()
-            .onAppear {
-                setupDefaultsObserver()
-            }
     }
     
     private func updateStateFromStack() {
@@ -66,8 +45,8 @@ struct ActivitiesPage: Page {
         let now = Date()
         let newActivity = ActivityItem(type: activity, time: now)
         
-        // Push activity and update states
-        activityStack.pushActivity(newActivity)
+        // Use pushActivityToVault instead of pushActivity
+        activityStack.pushActivityToVault(newActivity)
         activityStack.rerenderWidget()
         
         // Update states immediately for UI responsiveness
@@ -184,6 +163,8 @@ struct ActivitiesPage: Page {
             print("Unknown activity type: \(newType.rawValue)")
         }
         
+        updateStateFromStack()
+        
         dismissDialog()
     }
     
@@ -251,8 +232,7 @@ struct ActivitiesPage: Page {
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .active {
                     isLoading = true
-                    print("ActivitiesPage: App entered foreground")
-                    activityStack.loadActivities()
+                    activityStack.loadActivitiesFromVault()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         updateStateFromStack()
                         isLoading = false
@@ -261,11 +241,7 @@ struct ActivitiesPage: Page {
             }
             .onAppear {
                 isLoading = true
-                
-                // Load activities and update state
-                activityStack.loadActivities()
-                
-                // Ensure state is updated after activities are loaded
+                activityStack.loadActivitiesFromVault()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     updateStateFromStack()
                     isLoading = false
