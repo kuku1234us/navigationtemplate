@@ -421,8 +421,7 @@ public class ProjectModel: ObservableObject {
         let creationTime: Date
         let modifiedTime: Date
         let filePath: String
-        let icon: String?
-        let iconData: Data?  // For widget access
+        let icon: String?  // Keep icon filename
         
         init(from project: ProjectMetadata) {
             self.projId = project.projId
@@ -433,14 +432,6 @@ public class ProjectModel: ObservableObject {
             self.modifiedTime = project.modifiedTime
             self.filePath = project.filePath
             self.icon = project.icon
-            
-            // Convert icon to Data if it exists
-            if let iconName = project.icon,
-               let iconImage = ImageCache.shared.getImage(from: iconName) {
-                self.iconData = iconImage.pngData()
-            } else {
-                self.iconData = nil
-            }
         }
     }
     
@@ -462,14 +453,7 @@ public class ProjectModel: ObservableObject {
         }
         
         return serializableProjects.map { cached in
-            // Cache icon if available
-            if let iconName = cached.icon, 
-               let iconData = cached.iconData,
-               let image = UIImage(data: iconData) {
-                ImageCache.shared.storeImage(image, forKey: iconName)
-            }
-            
-            return ProjectMetadata(
+            ProjectMetadata(
                 projId: cached.projId,
                 banner: cached.banner,
                 projectStatus: ProjectStatus.from(cached.projectStatus),
@@ -477,7 +461,7 @@ public class ProjectModel: ObservableObject {
                 creationTime: cached.creationTime,
                 modifiedTime: cached.modifiedTime,
                 filePath: cached.filePath,
-                icon: cached.icon
+                icon: cached.icon  // Just pass the icon filename
             )
         }
     }

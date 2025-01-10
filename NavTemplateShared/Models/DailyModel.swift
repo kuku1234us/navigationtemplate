@@ -71,6 +71,7 @@ public struct ActivityItem: Identifiable, Codable {
     public let id: UUID
     public let activityType: ActivityType
     public let activityTime: Date
+    public var timeElapsed: TimeInterval = 0
     
     public init(type: ActivityType, time: Date = Date()) {
         self.id = UUID()
@@ -108,21 +109,48 @@ public class ActivityStack: ObservableObject {
     /// Updates LastKnownActivities in UserDefaults with latest timestamps from items array
     /// This function assumes that all pending activities have been processed and items[] is sorted
     private func updateLastKnownActivities() {
-        // Get current timestamps from UserDefaults
-        let currentLastKnown = getLastKnownActivitiesFromDefaults() ?? [:]
-        
         // Start with copy of current timestamps
-        var newLastKnown = currentLastKnown
+        var newLastKnown = getLastKnownActivitiesFromDefaults() ?? [:]
+        let prevLastKnown = newLastKnown
         
-        // Update timestamps for activities we have in items[]
-        for type in ActivityType.allCases {
-            if let lastItem = items.last(where: { $0.activityType == type }) {
-                newLastKnown[type.rawValue.lowercased()] = Int(lastItem.activityTime.timeIntervalSince1970)
+        // Track last activity times for each category
+        var lastConsciousTime: Date?  // For sleep/wake
+        var lastMealTime: Date?       // For meals
+        var lastExerciseTime: Date?   // For exercise
+        
+        // Iterate through items (already sorted by time)
+        for (index, item) in items.enumerated() {
+            var elapsed: TimeInterval = 0
+            
+            switch item.activityType {
+            case .sleep, .wake:
+                if let lastTime = lastConsciousTime {
+                    elapsed = item.activityTime.timeIntervalSince(lastTime)
+                }
+                lastConsciousTime = item.activityTime
+                
+            case .meal:
+                if let lastTime = lastMealTime {
+                    elapsed = item.activityTime.timeIntervalSince(lastTime)
+                }
+                lastMealTime = item.activityTime
+                
+            case .exercise:
+                if let lastTime = lastExerciseTime {
+                    elapsed = item.activityTime.timeIntervalSince(lastTime)
+                }
+                lastExerciseTime = item.activityTime
             }
+            
+            // Update timeElapsed directly in items array
+            items[index].timeElapsed = elapsed
+            
+            // Update LastKnownActivities with the latest timestamp
+            newLastKnown[item.activityType.rawValue.lowercased()] = Int(item.activityTime.timeIntervalSince1970)
         }
         
-        // Compare if update is needed
-        if newLastKnown != currentLastKnown {
+        // Update UserDefaults if changes detected
+        if newLastKnown != prevLastKnown {
             defaults?.set(newLastKnown, forKey: "LastKnownActivities")
         }
     }
@@ -183,10 +211,12 @@ public class ActivityStack: ObservableObject {
     /// Loads activities from UserDefaults into items array
     /// Used by widget only, combines LastKnownActivities and PendingActivities
     public func loadActivitiesFromDefaults() {
+        // Declare activities array at the correct scope
+        var activities: [ActivityItem] = []
+        
         // Load LastKnownActivities timestamps
         if let lastKnown = defaults?.dictionary(forKey: "LastKnownActivities") as? [String: Int] {
             // Convert timestamps back to ActivityItems
-            var activities: [ActivityItem] = []
             for (typeStr, timestamp) in lastKnown {
                 if let type = ActivityType(rawValue: typeStr.capitalized) {
                     activities.append(ActivityItem(
@@ -195,16 +225,17 @@ public class ActivityStack: ObservableObject {
                     ))
                 }
             }
-            self.items = activities.sorted(by: { $0.activityTime < $1.activityTime })
-            self.updateLastKnownActivities()  // Update timestamps after loading activities
         }
         
         // Append any pending activities
         if let pendingData = defaults?.data(forKey: "PendingActivities"),
            let pendingActivities = try? JSONDecoder().decode([ActivityItem].self, from: pendingData) {
-            self.items.append(contentsOf: pendingActivities)
-            self.updateLastKnownActivities()  // Update timestamps again with pending activities
+            activities.append(contentsOf: pendingActivities)
         }
+
+        // Sort by time (ascending)
+        self.items = activities.sorted(by: { $0.activityTime < $1.activityTime })
+        self.updateLastKnownActivities()  // Update timestamps again with pending activities
     }
     
     /// Adds activity to PendingActivities queue in UserDefaults

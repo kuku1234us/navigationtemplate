@@ -33,7 +33,7 @@ public struct CachedAsyncImage: View {
         .task {
             switch source {
             case .url(let urlString):
-                image = await ImageCache.shared.getImage(from: urlString)
+                image = await ImageCache.shared.getImageFromWeb(from: urlString)
             case .local(let filename):
                 image = await ImageCache.shared.getLocalImage(named: filename)
             }

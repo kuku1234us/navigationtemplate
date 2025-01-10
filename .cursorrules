@@ -4,3 +4,7 @@ When creating a .md documentation, do not put "# Title Of Document" at the top o
 The "# Introduction" should be the first thing in the document.
 
 When providing code updates, respect the existing comments already in place and include them in the proposed code update. Change a comment when appropriate. Add new comments where appropriate.
+
+All documentation are located in the ./iOSWizDocs folder.
+
+Only the main app should access the Obsidian vault. The main app shares data to the widgets via UserDefaults. The widgets do not have access to the Obsidian vault. When the user interacts with the widgets, the widgets queues up temporary data in UserDefaults. Upon the next execution of the main app, the main app consumes UserDefaults updates and data updates are then saved into the Obsidian vault.

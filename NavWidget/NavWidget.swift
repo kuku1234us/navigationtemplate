@@ -17,7 +17,6 @@ struct Provider: TimelineProvider {
     private let minPerInterval = 5
     
     init() {
-        print("Time provider initialized")
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "HH:mm:ss"
         let timeString = dateFormatter.string(from: Date())
@@ -44,7 +43,6 @@ struct Provider: TimelineProvider {
     }
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> ()) {
-        print("getTimeline...")
         let activityStack = ActivityStack()
         activityStack.loadActivitiesFromDefaults()
         
@@ -53,22 +51,18 @@ struct Provider: TimelineProvider {
         let lastActivityType = activityStack.allItems.last?.activityType
         let lastConsciousTime = activityStack.getLastConsciousItem()?.activityTime
         let lastMealTime = activityStack.getLastMealItem()?.activityTime
-        
+
         // Check if this is a user-initiated update
         let calendar = Calendar.current
         let now = Date()
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
         let currentMinute = calendar.date(from: components)?.timeIntervalSince1970 ?? 0
-        let lastActionTime = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")?
-            .double(forKey: "LastWidgetActionTime") ?? 0
-
+        
         let actionDateFormatter = DateFormatter()
         actionDateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let lastActionTimeDate = Date(timeIntervalSince1970: lastActionTime)
-        print("Last action time: \(actionDateFormatter.string(from: lastActionTimeDate))")
         
+        let lastActionTime = activityStack.allItems.last?.activityTime.timeIntervalSince1970 ?? 0
         let isUserInitiated = currentMinute <= lastActionTime
-        print("isUserInitiated: \(isUserInitiated)")
         
         // Generate entries
         var entries: [SimpleEntry] = []
@@ -319,20 +313,6 @@ struct NavWidget: Widget {
     }
 }
 
-// Helper extension for AppIntents
-extension AppIntent {
-    func recordActionTime() {
-        let calendar = Calendar.current
-        let now = Date()
-        // Zero out seconds and nanoseconds
-        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: now)
-        if let minute = calendar.date(from: components) {
-            UserDefaults(suiteName: "group.us.kothreat.NavTemplate")?
-                .set(minute.timeIntervalSince1970, forKey: "LastWidgetActionTime")
-        }
-    }
-}
-
 // Updated Intent implementation with static logger
 struct AddSleepActivity: AppIntent {
     static var title: LocalizedStringResource = "Add Sleep"
@@ -340,8 +320,6 @@ struct AddSleepActivity: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
-        recordActionTime()
-        
         let activityStack = ActivityStack()
         activityStack.loadActivitiesFromDefaults()
         activityStack.pushActivityToQueue(ActivityItem(type: .sleep))
@@ -357,8 +335,6 @@ struct AddWakeActivity: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
-        recordActionTime()
-        
         let activityStack = ActivityStack()
         activityStack.loadActivitiesFromDefaults()
         activityStack.pushActivityToQueue(ActivityItem(type: .wake))
@@ -374,8 +350,6 @@ struct AddMealActivity: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
-        recordActionTime()
-        
         let activityStack = ActivityStack()
         activityStack.loadActivitiesFromDefaults()
         activityStack.pushActivityToQueue(ActivityItem(type: .meal))
@@ -391,8 +365,6 @@ struct AddExerciseActivity: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult {
-        recordActionTime()
-        
         let activityStack = ActivityStack()
         activityStack.loadActivitiesFromDefaults()
         activityStack.pushActivityToQueue(ActivityItem(type: .exercise))

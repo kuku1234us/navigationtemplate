@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import WidgetKit
 
 public enum TaskStatus: String {
     case notStarted = " "
@@ -88,6 +89,8 @@ public class TaskModel: ObservableObject {
         }
     }
     
+    private let maxWidgetTasks = 25
+    
     private init() {
         // Load filter toggles from UserDefaults
         self.filterToggles = Self.loadFilterToggles()
@@ -147,34 +150,55 @@ public class TaskModel: ObservableObject {
                 self.applySortOrder(TaskSortOrder.shared.currentOrder)
                 self.objectWillChange.send()
             }
+            
+            // Update widget tasks after loading
+            updateWidgetTasks()
+            
         } catch {
             print("Error loading tasks: \(error)")
         }
     }
     
     public func deleteTask(_ task: TaskItem) {
-        do {
-            try projectFileManager.removeTask(task)
+        defer {
             DispatchQueue.main.async {
-                self.tasks.removeAll { $0.id == task.id }
+                self.objectWillChange.send()
             }
-        } catch {
-            print("Error deleting task: \(error)")
         }
+        
+        // Remove from file
+        do {
+            try projectFileManager.removeTaskFromFile(task.projectFilePath, taskId: task.id)
+        } catch {
+            print("Error removing task from file: \(error)")
+            return
+        }
+        
+        // Remove from memory
+        tasks.removeAll { $0.id == task.id }
+        
+        // Update widget
+        updateWidgetTasks()
     }
     
     public func updateTaskName(_ task: TaskItem, newName: String) {
         // Skip if name hasn't changed
         guard task.name != newName else { return }
         
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+            // Update widget after task change
+            updateWidgetTasks()
+        }
+        
         do {
             try projectFileManager.updateTaskName(task, newName: newName)
-            DispatchQueue.main.async {
-                if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
-                    var updatedTask = task
-                    updatedTask.name = newName
-                    self.tasks[index] = updatedTask
-                }
+            if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                var updatedTask = task
+                updatedTask.name = newName
+                self.tasks[index] = updatedTask
             }
         } catch {
             print("Error updating task name: \(error)")
@@ -182,14 +206,20 @@ public class TaskModel: ObservableObject {
     }
     
     public func updateTaskStatus(_ task: TaskItem, status: TaskStatus) {
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+            // Update widget after task change
+            updateWidgetTasks()
+        }
+        
         do {
             try projectFileManager.updateTaskStatus(task, status: status)
-            DispatchQueue.main.async {
-                if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
-                    var updatedTask = task
-                    updatedTask.taskStatus = status
-                    self.tasks[index] = updatedTask
-                }
+            if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
+                var updatedTask = task
+                updatedTask.taskStatus = status
+                self.tasks[index] = updatedTask
             }
         } catch {
             print("Error updating task status: \(error)")
@@ -258,11 +288,15 @@ public class TaskModel: ObservableObject {
     }
     
     public func addTask(_ task: TaskItem) {
-        // Add to memory
-        DispatchQueue.main.async {
-            self.tasks.insert(task, at: 0)  // Insert at beginning for immediate visibility
-            self.applySortOrder(TaskSortOrder.shared.currentOrder)  // Re-sort if needed
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
         }
+        
+        // Add to memory
+        tasks.insert(task, at: 0)  // Insert at beginning for immediate visibility
+        applySortOrder(TaskSortOrder.shared.currentOrder)  // Re-sort if needed
         
         // Add to file
         do {
@@ -271,9 +305,17 @@ public class TaskModel: ObservableObject {
         } catch {
             print("Error adding task to file: \(error)")
         }
+        
+        updateWidgetTasks()
     }
     
     public func updateTask(_ task: TaskItem, newName: String, newPriority: TaskPriority, newProjectPath: String) {
+        defer {
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+        
         // Create updated task
         var updatedTask = task
         updatedTask.name = newName
@@ -311,14 +353,12 @@ public class TaskModel: ObservableObject {
         }
         
         // Update in memory
-        DispatchQueue.main.async {
-            if let index = self.tasks.firstIndex(where: { $0.id == task.id }) {
-                self.tasks[index] = updatedTask
-                // Force a UI update
-                self.objectWillChange.send()
-                self.applySortOrder(TaskSortOrder.shared.currentOrder)
-            }
+        if let index = tasks.firstIndex(where: { $0.id == task.id }) {
+            tasks[index] = updatedTask
+            applySortOrder(TaskSortOrder.shared.currentOrder)
         }
+        
+        updateWidgetTasks()
     }
     
     // Methods to handle filter toggles
@@ -415,5 +455,47 @@ public class TaskModel: ObservableObject {
         }
         
         return sortedTasks
+    }
+    
+    /// Updates the WidgetTasks in UserDefaults for widget display
+    private func updateWidgetTasks() {
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        
+        // Get all non-completed tasks sorted by creation time (newest first)
+        let activeTasks = tasks.filter { $0.taskStatus != .completed }
+            .sorted { $0.createTime > $1.createTime }
+        
+        // First, get urgent tasks
+        let urgentTasks = activeTasks.filter { $0.priority == .urgent }
+            .prefix(maxWidgetTasks)
+        
+        // Calculate remaining slots
+        let remainingSlots = maxWidgetTasks - urgentTasks.count
+        
+        // Get non-urgent tasks if there are slots remaining
+        let nonUrgentTasks = remainingSlots > 0 ? 
+            activeTasks.filter { $0.priority != .urgent }
+                .prefix(remainingSlots) : []
+        
+        // Combine tasks
+        let widgetTasks = Array(urgentTasks) + Array(nonUrgentTasks)
+        
+        // Create serializable task data
+        let serializableTasks = widgetTasks.map { task in
+            let imageName = projectModel.getProject(atPath: task.projectFilePath)?.icon ?? "inbox.png"
+            return [
+                "name": task.name,
+                "priority": task.priority.rawValue,
+                "createTime": task.createTime.timeIntervalSince1970,
+                "status": task.taskStatus.rawValue,
+                "iconImageName": imageName  // Store the ImageCache name directly
+            ]
+        }
+        
+        // Save to UserDefaults
+        defaults?.set(serializableTasks, forKey: "WidgetTasks")
+        
+        // Trigger widget refresh
+        WidgetCenter.shared.reloadAllTimelines()
     }
 } 

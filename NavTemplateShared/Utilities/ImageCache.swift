@@ -11,7 +11,7 @@ public class ImageCache {
     // MARK: - Public API
     
     /// Retrieves an image either from memory cache, disk cache, or downloads it.
-    public func getImage(from urlString: String) async -> UIImage? {
+    public func getImageFromWeb(from urlString: String) async -> UIImage? {
         print("🔍 Attempting to load image from: \(urlString)")
         // 1) Check in-memory cache first
         if let cachedImage = cache.object(forKey: urlString as NSString) {
@@ -56,9 +56,9 @@ public class ImageCache {
         }
         
         // 2) Check on disk
-        if let diskCachedImage = loadImageFromDisk(urlString: filename) {
-            cache.setObject(diskCachedImage, forKey: filename as NSString)
-            return diskCachedImage
+        if let defaultsCachedImage = loadImageFromDefaults(key: filename) {
+            cache.setObject(defaultsCachedImage, forKey: filename as NSString)
+            return defaultsCachedImage
         }
         
         // 3) If not found locally, attempt reading from iCloud vault path
@@ -70,24 +70,25 @@ public class ImageCache {
         
         // Cache in memory + disk
         cache.setObject(image, forKey: filename as NSString)
-        saveImageToDisk(image, urlString: filename)
+        saveImageToDefaults(image, key: filename)
         return image
     }
     
-    /// Synchronously gets an image from cache (memory or disk)
-    public func getImage(from key: String) -> UIImage? {
+    /// Retrieves an image from memory cache or UserDefaults (used by widget)
+    public func getImageFromDefaults(key: String) -> UIImage? {
         // 1) Check in-memory cache first
         if let cachedImage = cache.object(forKey: key as NSString) {
             return cachedImage
         }
         
-        // 2) Check disk cache
-        if let diskCachedImage = loadImageFromDisk(urlString: key) {
-            // Put it into the in-memory cache
-            cache.setObject(diskCachedImage, forKey: key as NSString)
-            return diskCachedImage
+        // 2) Check UserDefaults
+        if let defaultsImage = loadImageFromDefaults(key: key) {
+            // Store in memory cache for future use
+            cache.setObject(defaultsImage, forKey: key as NSString)
+            return defaultsImage
         }
         
+        // 3) Not found in either location
         return nil
     }
     
@@ -144,6 +145,23 @@ public class ImageCache {
             return nil
         }
         return image
+    }
+    
+    /// Saves image data to UserDefaults in the app group
+    private func saveImageToDefaults(_ image: UIImage, key: String) {
+        guard let imageData = image.pngData() else { return }
+        
+        // Use app group UserDefaults
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        defaults?.set(imageData, forKey: "image_\(key)")
+    }
+    
+    /// Loads image data from UserDefaults in the app group
+    private func loadImageFromDefaults(key: String) -> UIImage? {
+        // Use app group UserDefaults
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        guard let imageData = defaults?.data(forKey: "image_\(key)") else { return nil }
+        return UIImage(data: imageData)
     }
 }
 

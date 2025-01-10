@@ -47,6 +47,7 @@ The iOSWiz NavWidget extends the app's functionality to the iOS home screen, pro
    - The widget includes four buttons for quick activity logging: Sleep, Wake, Meal, and Exercise.
    - Users can log activities directly from the home screen, enhancing convenience and accessibility.
    - Fast response time: When the user taps an activity button, getTimeline() of the widget creates only two Timeline entries to allow immediate rerendering of the widget. When getTimeline() is invoked again, it creates a longer timeline with 60 entries as response time is no longer a factor.
+   - When getTimeline() is invoked, the widget checks the current time against the last activity loaded from User.Defaults. If the current time is <= last activity time, we conclude this is a user-initiated update. Otherwise, it is updated by iOS background refresh.
 
 2. **Time Indicators**:
    - The widget displays two time indicators:

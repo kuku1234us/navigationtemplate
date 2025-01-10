@@ -20,6 +20,12 @@ struct ActivityItemView: View {
         return formatter.string(from: date).uppercased()
     }
     
+    private func formatElapsed(_ timeInterval: TimeInterval) -> String {
+        let hours = Int(timeInterval / 3600)
+        let minutes = Int((timeInterval.truncatingRemainder(dividingBy: 3600)) / 60)
+        return String(format: "%02d:%02d", hours, minutes)
+    }
+    
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
             // Activity Icon
@@ -39,9 +45,12 @@ struct ActivityItemView: View {
                     .fontWeight(.medium)
                     .foregroundColor(Color("MyPrimary"))
                 
-                Text(formatDate(item.activityTime))
-                    .font(.footnote)
-                    .foregroundColor(Color("MyTertiary"))
+                HStack(spacing: 8) {
+                    Text(formatDate(item.activityTime))
+                    Text(formatElapsed(item.timeElapsed))
+                }
+                .font(.footnote)
+                .foregroundColor(Color("MyTertiary"))
             }
             .contentShape(Rectangle())
             .onTapGesture {

@@ -1,49 +1,95 @@
-//
-//  TaskWidget.swift
-//  TaskWidget
-//
-//  Created by Mac14 on 1/7/25.
-//
+//  ./TaskWidget/TaskWidget.swift
 
 import WidgetKit
 import SwiftUI
 
+// Add this struct for widget tasks
+struct WidgetTask: Identifiable, Hashable {
+    let id: UUID
+    let name: String
+    let status: String
+    let priority: String
+    let iconImageName: String  // Store ImageCache name
+    
+    init(from dictionary: [String: Any]) {
+        self.id = UUID()
+        self.name = dictionary["name"] as? String ?? ""
+        self.status = dictionary["status"] as? String ?? " "
+        self.priority = dictionary["priority"] as? String ?? "Normal"
+        self.iconImageName = dictionary["iconImageName"] as? String ?? "default_project_icon"
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: WidgetTask, rhs: WidgetTask) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 struct Provider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
+        SimpleEntry(date: Date(), tasks: [], configuration: ConfigurationAppIntent())
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
+        let tasks = loadTasks()
+        return SimpleEntry(date: Date(), tasks: tasks, configuration: configuration)
     }
     
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        let entry = SimpleEntry(date: Date(), configuration: configuration)
-        return Timeline(entries: [entry], policy: .never)
+        let tasks = loadTasks()
+        let entry = SimpleEntry(date: Date(), tasks: tasks, configuration: configuration)
+        return Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(300)))
+    }
+    
+    private func loadTasks() -> [WidgetTask] {
+        // Create UserDefaults with explicit suite name
+        if let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate") {
+            if let taskDicts = defaults.array(forKey: "WidgetTasks") as? [[String: Any]] {
+                return taskDicts.map { WidgetTask(from: $0) }
+            }
+        }
+        return []  // Return empty array if anything fails
     }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
+    let tasks: [WidgetTask]
     let configuration: ConfigurationAppIntent
 }
 
 struct TaskWidgetEntryView : View {
     var entry: Provider.Entry
     @Environment(\.widgetFamily) var family
-
+    
+    private var displayTasks: [WidgetTask] {
+        Array(entry.tasks.prefix(16))  // Limit to 16 tasks
+    }
+    
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
+            VStack {
+                Spacer()
                 
-                // Content
-                Text("Hello Tasks")
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(displayTasks) { task in
+                        WidgetTaskItemView(
+                            name: task.name,
+                            status: task.status,
+                            priority: task.priority,
+                            iconImageName: task.iconImageName
+                        )
+                    }
+                }
+                
+                Spacer()
             }
         }
         .containerBackground(for: .widget) {
-            Image("TaskBackground")  // Use same background in container
+            Image("TaskBackground")
                 .resizable()
                 .aspectRatio(contentMode: .fill)
         }
