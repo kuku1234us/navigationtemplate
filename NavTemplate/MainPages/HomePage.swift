@@ -8,29 +8,33 @@ struct HomePage: Page {
 
     // Create stable ID for sidesheet
     private let leftSheetId = UUID()
-    
+
     var widgets: [AnyWidget] {
-        // Left sheet setup
-        let leftSideSheet = SideSheet(
-            id: leftSheetId,
-            content: {
-                HomeLeftSidesheetView()
-            },
-            direction: .leftToRight
-        )
-        
-        let leftGestureHandler = DragGestureHandler(
-            proxy: leftSideSheet.proxy,
-            direction: .leftToRight
-        )
-        
-        let leftWidget = WidgetWithGesture(
-            widget: leftSideSheet,
-            gesture: leftGestureHandler
-        )
-        
-        return [AnyWidget(leftWidget)]
+        return []  // No widgets for now
     }
+
+    // var widgets: [AnyWidget] {
+    //     // Left sheet setup
+    //     let leftSideSheet = SideSheet(
+    //         id: leftSheetId,
+    //         content: {
+    //             HomeLeftSidesheetView()
+    //         },
+    //         direction: .leftToRight
+    //     )
+        
+    //     let leftGestureHandler = DragGestureHandler(
+    //         proxy: leftSideSheet.proxy,
+    //         direction: .leftToRight
+    //     )
+        
+    //     let leftWidget = WidgetWithGesture(
+    //         widget: leftSideSheet,
+    //         gesture: leftGestureHandler
+    //     )
+        
+    //     return [AnyWidget(leftWidget)]
+    // }
 
     init(navigationManager: NavigationManager?) {
         self.navigationManager = navigationManager
@@ -89,9 +93,9 @@ struct HomePage: Page {
                 )
             ])
             .onDisappear {
-                print(">>>>> HomePage cleanup")
-                PropertyProxyFactory.shared.remove(id: leftSheetId)
-                NavigationState.shared.setActiveWidgetId(nil)
+                // print(">>>>> HomePage cleanup")
+                // PropertyProxyFactory.shared.remove(id: leftSheetId)
+                // NavigationState.shared.setActiveWidgetId(nil)
             }
         )
     }
