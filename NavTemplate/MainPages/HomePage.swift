@@ -58,14 +58,18 @@ struct HomePage: Page {
                     )
                 ),
                 MenuBarItem(
+                    unselectedIcon: "calendar",
+                    selectedIcon: "calendar.badge.clock",
+                    targetView: AnyView(
+                        CalendarPage(
+                            navigationManager: navigationManager
+                        )
+                    )
+                ),
+                MenuBarItem(
                     unselectedIcon: "testtube.2",
                     selectedIcon: "testtube.2",
                     targetView: AnyView(TestPage())
-                ),                
-                MenuBarItem(
-                    unselectedIcon: "house",
-                    selectedIcon: "house.fill",
-                    targetView: DashboardLinksView(navigationManager: navigationManager).makeView()
                 ),
                 MenuBarItem(
                     unselectedIcon: "wrench.and.screwdriver",

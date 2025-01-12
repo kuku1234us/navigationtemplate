@@ -8,56 +8,54 @@ public class ImageCache {
     
     private init() {}
     
+    // Helper to generate complete cache key
+    private func makeCacheKey(folder: String, filename: String) -> String {
+        "image_\(folder)_\(filename)"
+    }
+    
     // MARK: - Public API
     
-    /// Retrieves an image either from memory cache, disk cache, or downloads it.
-    public func getImageFromWeb(from urlString: String) async -> UIImage? {
+    /// Retrieves an image either from memory cache, UserDefaults, or downloads it.
+    public func getImageFromWeb(folder: String, from urlString: String) async -> UIImage? {
         print("🔍 Attempting to load image from: \(urlString)")
+        let cacheKey = makeCacheKey(folder: folder, filename: urlString)
+        
         // 1) Check in-memory cache first
-        if let cachedImage = cache.object(forKey: urlString as NSString) {
+        if let cachedImage = cache.object(forKey: cacheKey as NSString) {
             return cachedImage
         }
         
-        // 2) Check disk cache
-        if let diskCachedImage = loadImageFromDisk(urlString: urlString) {
-            // Put it into the in-memory cache
-            cache.setObject(diskCachedImage, forKey: urlString as NSString)
-            return diskCachedImage
+        // 2) Check UserDefaults
+        if let defaultsCachedImage = loadImageFromDefaults(folder: folder, key: urlString) {
+            cache.setObject(defaultsCachedImage, forKey: cacheKey as NSString)
+            return defaultsCachedImage
         }
         
         // 3) If not found, download
-        return await downloadAndCacheImage(from: urlString)
+        return await downloadAndCacheImage(folder: folder, from: urlString)
     }
     
-    /// Stores an image manually (both in memory and on disk).
-    public func storeImage(_ image: UIImage, forKey key: String) {
-        // 1) Store in memory
-        cache.setObject(image, forKey: key as NSString)
-        // 2) Store on disk
-        saveImageToDisk(image, urlString: key)
-    }
-    
-    /// Removes an image from memory and disk cache.
-    public func removeImage(for urlString: String) {
-        // Remove from memory cache
-        cache.removeObject(forKey: urlString as NSString)
+    /// Removes an image from memory and UserDefaults.
+    public func removeImage(folder: String, filename: String) {
+        let cacheKey = makeCacheKey(folder: folder, filename: filename)
+        cache.removeObject(forKey: cacheKey as NSString)
         
-        // Remove from disk cache
-        guard let cacheDir = cacheDirectory else { return }
-        let fileURL = cacheDir.appendingPathComponent(urlString.md5Hash)
-        try? fileManager.removeItem(at: fileURL)
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        defaults?.removeObject(forKey: cacheKey)
     }
     
     /// Retrieves a local image (from your iCloud vault, etc.), caches it, returns it.
-    public func getLocalImage(named filename: String) async -> UIImage? {
+    public func getLocalImage(folder: String, filename: String) async -> UIImage? {
+        let cacheKey = makeCacheKey(folder: folder, filename: filename)
+        
         // 1) Check in-memory
-        if let cachedImage = cache.object(forKey: filename as NSString) {
+        if let cachedImage = cache.object(forKey: cacheKey as NSString) {
             return cachedImage
         }
         
-        // 2) Check on disk
-        if let defaultsCachedImage = loadImageFromDefaults(key: filename) {
-            cache.setObject(defaultsCachedImage, forKey: filename as NSString)
+        // 2) Check UserDefaults
+        if let defaultsCachedImage = loadImageFromDefaults(folder: folder, key: filename) {
+            cache.setObject(defaultsCachedImage, forKey: cacheKey as NSString)
             return defaultsCachedImage
         }
         
@@ -68,23 +66,25 @@ public class ImageCache {
             return nil
         }
         
-        // Cache in memory + disk
-        cache.setObject(image, forKey: filename as NSString)
-        saveImageToDefaults(image, key: filename)
+        // Cache in memory + UserDefaults
+        cache.setObject(image, forKey: cacheKey as NSString)
+        saveImageToDefaults(image, folder: folder, key: filename)
         return image
     }
     
     /// Retrieves an image from memory cache or UserDefaults (used by widget)
-    public func getImageFromDefaults(key: String) -> UIImage? {
+    public func getImageFromDefaults(folder: String, key: String) -> UIImage? {
+        let cacheKey = makeCacheKey(folder: folder, filename: key)
+        
         // 1) Check in-memory cache first
-        if let cachedImage = cache.object(forKey: key as NSString) {
+        if let cachedImage = cache.object(forKey: cacheKey as NSString) {
             return cachedImage
         }
         
         // 2) Check UserDefaults
-        if let defaultsImage = loadImageFromDefaults(key: key) {
+        if let defaultsImage = loadImageFromDefaults(folder: folder, key: key) {
             // Store in memory cache for future use
-            cache.setObject(defaultsImage, forKey: key as NSString)
+            cache.setObject(defaultsImage, forKey: cacheKey as NSString)
             return defaultsImage
         }
         
@@ -92,23 +92,37 @@ public class ImageCache {
         return nil
     }
     
-    // MARK: - Internal/Private
-    
-    private var cacheDirectory: URL? {
-        // Place images in a subfolder of the user’s Cache directory
-        fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("ImageCache")
+    /// Removes images from a specific folder in UserDefaults that are not in the provided set of filenames
+    public func removeUnusedImages(folder: String, currentlyUsedFilenames: Set<String>) {
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        let folderPrefix = "image_\(folder)_"
+        
+        // Get all keys from UserDefaults that start with the folder prefix
+        if let keys = defaults?.dictionaryRepresentation().keys.filter({ $0.hasPrefix(folderPrefix) }) {
+            // For each key, extract the filename and check if it's still in use
+            for key in keys {
+                let filename = String(key.dropFirst(folderPrefix.count))
+                if !currentlyUsedFilenames.contains(filename) {
+                    Logger.shared.info("[I002] Removing unused image from \(folder): \(filename)")
+                    defaults?.removeObject(forKey: key)
+                    cache.removeObject(forKey: filename as NSString)
+                }
+            }
+        }
     }
     
-    /// Downloads & caches an image from a remote URL
-    private func downloadAndCacheImage(from urlString: String) async -> UIImage? {
+    // MARK: - Private Methods
+    
+    private func downloadAndCacheImage(folder: String, from urlString: String) async -> UIImage? {
         guard let url = URL(string: urlString) else { return nil }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             guard let image = UIImage(data: data) else { return nil }
-            // Store in memory & on disk
-            cache.setObject(image, forKey: urlString as NSString)
-            saveImageToDisk(image, urlString: urlString)
+            
+            // Store in memory & UserDefaults
+            let cacheKey = makeCacheKey(folder: folder, filename: urlString)
+            cache.setObject(image, forKey: cacheKey as NSString)
+            saveImageToDefaults(image, folder: folder, key: urlString)
             return image
         } catch {
             print("Error downloading image: \(error)")
@@ -116,51 +130,17 @@ public class ImageCache {
         }
     }
     
-    /// Saves a PNG version of the image to our disk cache
-    private func saveImageToDisk(_ image: UIImage, urlString: String) {
-        guard let data = image.pngData(),
-              let cacheDir = cacheDirectory else { return }
-        
-        do {
-            // Create folder if missing
-            if !fileManager.fileExists(atPath: cacheDir.path) {
-                try fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-            }
-            // Write the file
-            let fileURL = cacheDir.appendingPathComponent(urlString.md5Hash)
-            try data.write(to: fileURL)
-        } catch {
-            print("Error saving image to disk: \(error)")
-        }
-    }
-    
-    /// Loads an image from our disk cache (if present)
-    private func loadImageFromDisk(urlString: String) -> UIImage? {
-        guard let cacheDir = cacheDirectory else { return nil }
-        let fileURL = cacheDir.appendingPathComponent(urlString.md5Hash)
-        guard fileManager.fileExists(atPath: fileURL.path),
-              let data = try? Data(contentsOf: fileURL),
-              let image = UIImage(data: data)
-        else {
-            return nil
-        }
-        return image
-    }
-    
-    /// Saves image data to UserDefaults in the app group
-    private func saveImageToDefaults(_ image: UIImage, key: String) {
+    private func saveImageToDefaults(_ image: UIImage, folder: String, key: String) {
         guard let imageData = image.pngData() else { return }
-        
-        // Use app group UserDefaults
         let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
-        defaults?.set(imageData, forKey: "image_\(key)")
+        let cacheKey = makeCacheKey(folder: folder, filename: key)
+        defaults?.set(imageData, forKey: cacheKey)
     }
     
-    /// Loads image data from UserDefaults in the app group
-    private func loadImageFromDefaults(key: String) -> UIImage? {
-        // Use app group UserDefaults
+    private func loadImageFromDefaults(folder: String, key: String) -> UIImage? {
         let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
-        guard let imageData = defaults?.data(forKey: "image_\(key)") else { return nil }
+        let cacheKey = makeCacheKey(folder: folder, filename: key)
+        guard let imageData = defaults?.data(forKey: cacheKey) else { return nil }
         return UIImage(data: imageData)
     }
 }

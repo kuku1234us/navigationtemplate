@@ -2,13 +2,16 @@ import SwiftUI
 import NavTemplateShared
 
 struct WidgetTaskItemView: View {
-    let name: String
-    let status: String
-    let priority: String
-    let iconImageName: String
+    let task: WidgetTaskItem
+    @State private var currentStatus: String
+    
+    init(task: WidgetTaskItem) {
+        self.task = task
+        self._currentStatus = State(initialValue: task.status)
+    }
     
     private var statusIcon: String {
-        switch status {
+        switch currentStatus {
         case TaskStatus.completed.rawValue: return TaskStatus.completed.icon
         case TaskStatus.inProgress.rawValue: return TaskStatus.inProgress.icon
         default: return TaskStatus.notStarted.icon
@@ -16,7 +19,7 @@ struct WidgetTaskItemView: View {
     }
     
     private var priorityColor: Color {
-        switch priority {
+        switch task.priority {
         case TaskPriority.urgent.rawValue: return TaskPriority.urgent.color
         case TaskPriority.high.rawValue: return TaskPriority.high.color
         case TaskPriority.normal.rawValue: return TaskPriority.normal.color
@@ -27,12 +30,18 @@ struct WidgetTaskItemView: View {
     var body: some View {
         HStack(spacing: 5) {
             // Status icon with priority color
-            Image(systemName: statusIcon)
-                .font(.footnote)
-                .foregroundStyle(priorityColor)
+            Button(intent: ToggleTaskIntent(
+                taskId: task.taskId,
+                newStatus: TaskStatus(rawValue: currentStatus)?.next().rawValue ?? TaskStatus.notStarted.rawValue
+            )) {
+                Image(systemName: statusIcon)
+                    .font(.footnote)
+                    .foregroundStyle(priorityColor)
+            }
+            .buttonStyle(.plain)
             
             // Project icon from ImageCache
-            if let uiImage = ImageCache.shared.getImageFromDefaults(key: iconImageName) {
+            if let uiImage = ImageCache.shared.getImageFromDefaults(folder: "projecticon", key: task.iconImageName) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFit()
@@ -41,16 +50,12 @@ struct WidgetTaskItemView: View {
             }
             
             // Task name with truncation
-            Text(name)
+            Text(task.name)
                 .font(.footnote)
                 .foregroundStyle(Color("MySecondary"))
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
         .padding(.horizontal, 6)
-        .onAppear {
-            // Load the icon image from ImageCache
-            print("Task: \(name) Loading icon image for \(iconImageName)")
-        }
     }
 } 

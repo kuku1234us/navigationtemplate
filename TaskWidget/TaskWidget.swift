@@ -2,62 +2,45 @@
 
 import WidgetKit
 import SwiftUI
+import AppIntents
+import NavTemplateShared
 
-// Add this struct for widget tasks
-struct WidgetTask: Identifiable, Hashable {
-    let id: UUID
-    let name: String
-    let status: String
-    let priority: String
-    let iconImageName: String  // Store ImageCache name
-    
-    init(from dictionary: [String: Any]) {
-        self.id = UUID()
-        self.name = dictionary["name"] as? String ?? ""
-        self.status = dictionary["status"] as? String ?? " "
-        self.priority = dictionary["priority"] as? String ?? "Normal"
-        self.iconImageName = dictionary["iconImageName"] as? String ?? "default_project_icon"
-    }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-    
-    static func == (lhs: WidgetTask, rhs: WidgetTask) -> Bool {
-        lhs.id == rhs.id
-    }
-}
+// Add this at the top level of the file, before any struct definitions
+// This ensures Logger is initialized before any widget code runs
+private let _initializeLogger: Void = {
+    Logger.initialize(target: "TaskWidget")
+}()
 
 struct Provider: AppIntentTimelineProvider {
+    init() {
+    }
+    
     func placeholder(in context: Context) -> SimpleEntry {
         SimpleEntry(date: Date(), tasks: [], configuration: ConfigurationAppIntent())
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        let tasks = loadTasks()
-        return SimpleEntry(date: Date(), tasks: tasks, configuration: configuration)
+        // Load tasks from UserDefaults
+        let tasks = TaskModel.loadWidgetTasksFromDefaults() ?? []
+        let entry = SimpleEntry(date: Date(), tasks: tasks, configuration: configuration)
+        return entry
     }
     
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        let tasks = loadTasks()
+        // Load tasks from UserDefaults
+        let tasks = TaskModel.loadWidgetTasksFromDefaults() ?? []
+        
+        // Create entry with current tasks
         let entry = SimpleEntry(date: Date(), tasks: tasks, configuration: configuration)
+        
+        // Update every 5 minutes or when tasks change
         return Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(300)))
-    }
-    
-    private func loadTasks() -> [WidgetTask] {
-        // Create UserDefaults with explicit suite name
-        if let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate") {
-            if let taskDicts = defaults.array(forKey: "WidgetTasks") as? [[String: Any]] {
-                return taskDicts.map { WidgetTask(from: $0) }
-            }
-        }
-        return []  // Return empty array if anything fails
     }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let tasks: [WidgetTask]
+    let tasks: [WidgetTaskItem]
     let configuration: ConfigurationAppIntent
 }
 
@@ -65,7 +48,7 @@ struct TaskWidgetEntryView : View {
     var entry: Provider.Entry
     @Environment(\.widgetFamily) var family
     
-    private var displayTasks: [WidgetTask] {
+    private var displayTasks: [WidgetTaskItem] {
         Array(entry.tasks.prefix(16))  // Limit to 16 tasks
     }
     
@@ -75,13 +58,8 @@ struct TaskWidgetEntryView : View {
                 Spacer()
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(displayTasks) { task in
-                        WidgetTaskItemView(
-                            name: task.name,
-                            status: task.status,
-                            priority: task.priority,
-                            iconImageName: task.iconImageName
-                        )
+                    ForEach(displayTasks, id: \.taskId) { task in
+                        WidgetTaskItemView(task: task)  // Pass entire WidgetTaskItem
                     }
                 }
                 
@@ -97,18 +75,41 @@ struct TaskWidgetEntryView : View {
 }
 
 struct TaskWidget: Widget {
-    let kind: String = "TaskWidget"
-
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
+        AppIntentConfiguration(kind: "TaskWidget", intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
             TaskWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Tasks")
         .description("View and manage your tasks")
-        .supportedFamilies([
-            .systemMedium,
-            .systemLarge
-        ])
+        .supportedFamilies([.systemMedium, .systemLarge])
+    }
+}
+
+struct ToggleTaskIntent: AppIntent {
+    static var title: LocalizedStringResource = "Toggle Task Status"
+    static var description: LocalizedStringResource = "Toggles a task's completion status"
+    
+    @Parameter(title: "Task ID")
+    var taskId: Int
+    
+    @Parameter(title: "New Status")
+    var newStatus: String
+    
+    init() {
+        self.taskId = 0
+        self.newStatus = " "
+    }
+    
+    init(taskId: Int64, newStatus: String) {
+        self.taskId = Int(taskId)
+        self.newStatus = newStatus
+    }
+    
+    func perform() async throws -> some IntentResult {
+        if let task = TaskModel.loadWidgetTasksFromDefaults()?.first(where: { $0.taskId == Int64(taskId) }) {
+            TaskModel.pushTaskUpdateToQueue(task, newStatus: newStatus)
+        }
+        return .result()
     }
 }
 

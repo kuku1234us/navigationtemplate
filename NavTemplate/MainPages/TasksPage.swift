@@ -37,6 +37,7 @@ struct TasksPage: Page {
     @State private var headerFrame: CGRect = .zero    
     @State private var showTaskEditor = false
     @State private var taskToEdit: TaskItem?
+    @State private var searchText = ""  // Add search text state
     
     private func handleTaskEdit(_ task: TaskItem) {
         taskToEdit = task
@@ -62,9 +63,10 @@ struct TasksPage: Page {
                     .overlay(.black.opacity(0.5))
                 
                 VStack(spacing: 0) {
-                    // Header
+                    // Header with search
                     TaskHeaderView(
-                        showSortMenu: $showSortMenu
+                        showSortMenu: $showSortMenu,
+                        searchText: $searchText  // Pass search text binding
                     )
                     .background(
                         GeometryReader { geo in
@@ -80,7 +82,8 @@ struct TasksPage: Page {
                     // Task List
                     TaskListView(
                         onEdit: handleTaskEdit,
-                        onDelete: handleTaskDelete
+                        onDelete: handleTaskDelete,
+                        searchText: $searchText  // Pass the binding
                     )
                     .padding(.top)
                 }
@@ -135,6 +138,8 @@ struct TasksPage: Page {
             .animation(.spring(duration: 0.3), value: showSortMenu)
             .onAppear {
                 taskModel.loadAllTasks()
+                // Process any pending task updates from widget
+                TaskModel.shared.processPendingTaskUpdates()
             }
             .onDisappear {
                 PropertyProxyFactory.shared.remove(id: rightSheetId)

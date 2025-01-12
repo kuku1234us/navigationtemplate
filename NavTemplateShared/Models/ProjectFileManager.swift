@@ -106,7 +106,7 @@ internal class ProjectFileManager {
         let taskStatus: TaskStatus
         if let statusMatch = line.range(of: statusPattern, options: .regularExpression) {
             let statusChar = line[statusMatch].dropFirst().dropLast().first ?? " "
-            taskStatus = TaskStatus(statusChar: statusChar)
+            taskStatus = TaskStatus(statusChar)
         } else {
             return nil  // Invalid task line
         }

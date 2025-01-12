@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 import WidgetKit
 
-public enum TaskStatus: String {
+public enum TaskStatus: String, Codable {
     case notStarted = " "
     case completed = "x"
     case inProgress = "/"
@@ -16,12 +16,23 @@ public enum TaskStatus: String {
         }
     }
     
-    public init(statusChar: Character) {
-        switch statusChar {
-        case "x": self = .completed
-        case "/": self = .inProgress
-        default: self = .notStarted
+    // Convert from Character if needed
+    public init(_ char: Character) {
+        self = TaskStatus(rawValue: String(char)) ?? .notStarted
+    }
+    
+    // Helper to get next status in cycle
+    public static func nextTaskStatus(_ current: TaskStatus) -> TaskStatus {
+        switch current {
+        case .notStarted: return .inProgress
+        case .inProgress: return .completed
+        case .completed: return .notStarted
         }
+    }
+    
+    // Convenience method on instance
+    public func next() -> TaskStatus {
+        TaskStatus.nextTaskStatus(self)
     }
 }
 
@@ -57,7 +68,7 @@ public struct TaskItem: Identifiable {
         self.tags = tags
         self.createTime = createTime
     }
-}
+} 
 
 // Define the filter set structure
 public struct TaskFilterToggleSet: Codable {
@@ -72,7 +83,30 @@ public struct TaskFilterToggleSet: Codable {
 
 // Make TaskPriority and TaskStatus Codable
 extension TaskPriority: Codable {}
-extension TaskStatus: Codable {}
+
+public struct WidgetTaskItem: Codable {
+    public let taskId: Int64
+    public let name: String
+    public let priority: String
+    public var status: String
+    public let iconImageName: String
+    
+    public init(from task: TaskItem, iconName: String) {
+        self.taskId = task.id
+        self.name = task.name
+        self.priority = task.priority.rawValue
+        self.status = task.taskStatus.rawValue
+        self.iconImageName = iconName
+    }
+    
+    public init(taskId: Int64, name: String, priority: String, status: String, iconImageName: String) {
+        self.taskId = taskId
+        self.name = name
+        self.priority = priority
+        self.status = status
+        self.iconImageName = iconImageName
+    }
+}
 
 public class TaskModel: ObservableObject {
     @Published public private(set) var tasks: [TaskItem] = []
@@ -480,22 +514,126 @@ public class TaskModel: ObservableObject {
         // Combine tasks
         let widgetTasks = Array(urgentTasks) + Array(nonUrgentTasks)
         
-        // Create serializable task data
+        // Create WidgetTaskItems
         let serializableTasks = widgetTasks.map { task in
-            let imageName = projectModel.getProject(atPath: task.projectFilePath)?.icon ?? "inbox.png"
-            return [
-                "name": task.name,
-                "priority": task.priority.rawValue,
-                "createTime": task.createTime.timeIntervalSince1970,
-                "status": task.taskStatus.rawValue,
-                "iconImageName": imageName  // Store the ImageCache name directly
-            ]
+            let iconName = projectModel.getProject(atPath: task.projectFilePath)?.icon ?? "inbox.png"
+            return WidgetTaskItem(from: task, iconName: iconName)
         }
         
         // Save to UserDefaults
-        defaults?.set(serializableTasks, forKey: "WidgetTasks")
+        if let encoded = try? JSONEncoder().encode(serializableTasks) {
+            defaults?.set(encoded, forKey: "WidgetTasks")
+        }
         
         // Trigger widget refresh
         WidgetCenter.shared.reloadAllTimelines()
+    }
+    
+    // Add these methods to handle widget task updates
+    public static func pushTaskUpdateToQueue(_ widgetTask: WidgetTaskItem, newStatus: String) {
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        
+        // 1. Update PendingTaskUpdates queue
+        var pendingUpdates: [WidgetTaskItem] = []
+        if let data = defaults?.data(forKey: "PendingTaskUpdates"),
+           let existing = try? JSONDecoder().decode([WidgetTaskItem].self, from: data) {
+            pendingUpdates = existing
+        }
+        
+        // Create new instance with updated status
+        let updatedTask = WidgetTaskItem(
+            taskId: widgetTask.taskId,
+            name: widgetTask.name,
+            priority: widgetTask.priority,
+            status: newStatus,
+            iconImageName: widgetTask.iconImageName
+        )
+        
+        // Add new update to queue
+        pendingUpdates.append(updatedTask)
+        
+        // Save updated queue
+        if let encoded = try? JSONEncoder().encode(pendingUpdates) {
+            defaults?.set(encoded, forKey: "PendingTaskUpdates")
+        }
+        
+        // 2. Update WidgetTasks
+        if let data = defaults?.data(forKey: "WidgetTasks"),
+           var widgetTasks = try? JSONDecoder().decode([WidgetTaskItem].self, from: data) {
+            // Find and update the task
+            if let index = widgetTasks.firstIndex(where: { $0.taskId == widgetTask.taskId }) {
+                widgetTasks[index] = updatedTask
+                
+                // Save back to UserDefaults
+                if let encoded = try? JSONEncoder().encode(widgetTasks) {
+                    defaults?.set(encoded, forKey: "WidgetTasks")
+                }
+            }
+        }
+        
+        // 3. Trigger widget refresh
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+    
+    public func processPendingTaskUpdates() {
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        
+        // Get pending updates
+        guard let data = defaults?.data(forKey: "PendingTaskUpdates"),
+              let pendingUpdates = try? JSONDecoder().decode([WidgetTaskItem].self, from: data) else {
+            return
+        }
+        
+        // Process all updates first
+        var successfulUpdates: [WidgetTaskItem] = []
+        for updatedTask in pendingUpdates {
+            // Find corresponding TaskItem by taskId
+            if let index = tasks.firstIndex(where: { $0.id == updatedTask.taskId }) {
+                do {
+                    let taskItem = tasks[index]
+                    let newStatus = TaskStatus(rawValue: updatedTask.status) ?? .notStarted
+                    try projectFileManager.updateTaskStatus(taskItem, status: newStatus)
+                    successfulUpdates.append(updatedTask)
+                } catch {
+                    Logger.shared.error("Failed to process pending task update: \(error)")
+                }
+            }
+        }
+        
+        // Clear pending queue first to avoid recursive calls
+        defaults?.removeObject(forKey: "PendingTaskUpdates")
+        
+        // If we processed any updates successfully
+        if !successfulUpdates.isEmpty {
+            // Update tasks array
+            for updatedTask in successfulUpdates {
+                if let index = tasks.firstIndex(where: { $0.id == updatedTask.taskId }) {
+                    var task = tasks[index]
+                    task.taskStatus = TaskStatus(rawValue: updatedTask.status) ?? .notStarted
+                    tasks[index] = task
+                }
+            }
+            
+            // Update widget
+            updateWidgetTasks()
+            
+            // Notify UI of changes
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
+    }
+    
+    /// Loads widget tasks from UserDefaults (used by widget)
+    public static func loadWidgetTasksFromDefaults() -> [WidgetTaskItem]? { 
+        let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
+        
+        guard let data = defaults?.data(forKey: "WidgetTasks"),
+              let widgetTasks = try? JSONDecoder().decode([WidgetTaskItem].self, from: data)
+        else {
+            return nil
+        }
+        
+        return widgetTasks
     }
 } 

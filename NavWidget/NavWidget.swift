@@ -17,10 +17,6 @@ struct Provider: TimelineProvider {
     private let minPerInterval = 5
     
     init() {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "HH:mm:ss"
-        let timeString = dateFormatter.string(from: Date())
-        Logger.shared.info("NavWidget initialized at \(timeString)")
     }
     
     func placeholder(in context: Context) -> SimpleEntry {

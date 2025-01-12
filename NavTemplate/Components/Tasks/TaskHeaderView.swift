@@ -4,6 +4,7 @@ struct TaskHeaderView: View {
     @State private var sortSelected: Bool = false
     @State private var filterSelected: Bool = false
     @Binding var showSortMenu: Bool
+    @Binding var searchText: String
     
     var body: some View {
         VStack(spacing: 0) {
@@ -12,7 +13,15 @@ struct TaskHeaderView: View {
                     .font(.largeTitle)
                     .fontWeight(.black)
                     .foregroundColor(Color("PageTitle"))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Spacer()
+                            // Search field
+            TaskSearchField(text: $searchText)
+                .padding(.horizontal, 12)
+
+
+                Spacer()
+
                 
                 // Sort and Filter buttons
                 HStack(spacing: 0) {
@@ -25,19 +34,10 @@ struct TaskHeaderView: View {
                             showSortMenu.toggle()
                         }
                     )
-                    
-                    // IconButton(
-                    //     selectedIcon: "slider.horizontal.below.square.filled.and.square",
-                    //     unselectedIcon: "slider.horizontal.below.square.filled.and.square",
-                    //     isSelected: $filterSelected,
-                    //     action: {
-                    //         filterSelected.toggle()
-                    //     }
-                    // )
                 }
             }
+            
         }
-
         .withSafeAreaTop()
         .padding()
         .backgroundBlur(radius: 10, opaque: true)

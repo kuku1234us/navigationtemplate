@@ -223,21 +223,12 @@ public class ProjectModel: ObservableObject {
     @MainActor
     public func loadProjects() async {
         do {
-            // 1. Load all project files from iCloud
-            let projectFiles = try ProjectFileManager.shared.findAllProjectFiles()
             var projectMetadata: [ProjectMetadata] = []
             
-            // 2. Parse each project file
+            // Load all project files
+            let projectFiles = try ProjectFileManager.shared.findAllProjectFiles()
             for fileURL in projectFiles {
                 if let metadata = try parseProjectMetadata(from: fileURL) {
-                    // Check if this is an existing project with a different icon
-                    if let existingProject = projects.first(where: { $0.projId == metadata.projId }),
-                       let oldIcon = existingProject.icon,
-                       let newIcon = metadata.icon,
-                       oldIcon != newIcon {
-                        // Remove old icon from cache
-                        ImageCache.shared.removeImage(for: oldIcon)
-                    }
                     projectMetadata.append(metadata)
                 }
             }
@@ -278,8 +269,13 @@ public class ProjectModel: ObservableObject {
             self.projects = projectMetadata
             saveProjectsToUserDefaults()
             self.objectWillChange.send()
+            
+            // Clean up unused project icons
+            let currentIcons = Set(projectMetadata.compactMap { $0.icon })
+            ImageCache.shared.removeUnusedImages(folder: "projecticon", currentlyUsedFilenames: currentIcons)
+            
         } catch {
-            print("Error loading projects: \(error)")
+            Logger.shared.error("[E015] Error loading projects: \(error)")
         }
     }
     
@@ -288,8 +284,14 @@ public class ProjectModel: ObservableObject {
         let lines = content.components(separatedBy: .newlines)
         
         // Find frontmatter boundaries
-        guard let startIndex = lines.firstIndex(of: "---") else { return nil }
-        guard let endIndex = lines.dropFirst(startIndex + 1).firstIndex(of: "---") else { return nil }
+        guard let startIndex = lines.firstIndex(of: "---") else { 
+            Logger.shared.error("[E011] Failed to find opening frontmatter marker in: \(fileURL.lastPathComponent)")
+            return nil 
+        }
+        guard let endIndex = lines.dropFirst(startIndex + 1).firstIndex(of: "---") else { 
+            Logger.shared.error("[E012] Failed to find closing frontmatter marker in: \(fileURL.lastPathComponent)")
+            return nil 
+        }
         
         // Extract frontmatter
         let frontmatter = lines[(startIndex + 1)..<(startIndex + 1 + endIndex)]
@@ -305,12 +307,40 @@ public class ProjectModel: ObservableObject {
         }
         
         // Get file attributes
-        let fileAttributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        let fileAttributes: [FileAttributeKey: Any]
+        do {
+            fileAttributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        } catch {
+            Logger.shared.error("[E013] Failed to get file attributes for: \(fileURL.lastPathComponent), error: \(error)")
+            throw error
+        }
+        
         let creationDate = fileAttributes[.creationDate] as? Date ?? Date()
         let modificationDate = fileAttributes[.modificationDate] as? Date ?? Date()
         
-        // Parse projId (default to file creation time if not found)
-        let projId = Int64(metadata["projId"] ?? "") ?? Int64(creationDate.timeIntervalSince1970)
+        // Check if projId is missing and write it if needed
+        let projId: Int64
+        if let existingProjId = metadata["projId"].flatMap({ Int64($0) }) {
+            projId = existingProjId
+        } else {
+            // Create new projId from creation time
+            projId = Int64(creationDate.timeIntervalSince1970)
+            
+            // Insert projId into frontmatter
+            var updatedLines = lines
+            let projIdLine = "projId: \(projId)"
+            updatedLines.insert(projIdLine, at: startIndex + 1)
+            
+            // Write back to file
+            let updatedContent = updatedLines.joined(separator: "\n")
+            do {
+                try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
+                Logger.shared.info("[I001] Successfully added projId: \(projId) to project file: \(fileURL.lastPathComponent)")
+            } catch {
+                Logger.shared.error("[E014] Failed to write projId to file: \(fileURL.lastPathComponent), error: \(error)")
+                throw error
+            }
+        }
         
         // Parse banner URL
         var bannerURL: URL? = nil
@@ -318,7 +348,7 @@ public class ProjectModel: ObservableObject {
             bannerURL = URL(string: bannerPath)
         }
         
-        // Parse icon filename directly (no URL conversion needed)
+        // Parse icon filename directly
         let iconFilename = metadata["icon"]
         
         return ProjectMetadata(
@@ -329,7 +359,7 @@ public class ProjectModel: ObservableObject {
             creationTime: creationDate,
             modifiedTime: modificationDate,
             filePath: fileURL.path,
-            icon: iconFilename  // Pass the filename string directly
+            icon: iconFilename
         )
     }
     

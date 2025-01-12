@@ -35,12 +35,31 @@ struct TaskListView: View {
     let onDelete: (TaskItem) -> Void
     @State private var keyboardHeight: CGFloat = 0
     @State private var editingTaskId: Int64?
+    @Binding var searchText: String
+    
+    private var filteredTasks: [TaskItem] {
+        if searchText.isEmpty {
+            return tasksFilterSort.filteredTasks
+        }
+        
+        let searchQuery = searchText.lowercased()
+        return tasksFilterSort.filteredTasks.filter { task in
+            let nameMatch = task.name.lowercased().contains(searchQuery)
+            
+            let projectMatch = ProjectModel.shared.getProject(atPath: task.projectFilePath)?
+                .projectName
+                .lowercased()
+                .contains(searchQuery) ?? false
+            
+            return nameMatch || projectMatch
+        }
+    }
     
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 5) {
-                    ForEach(tasksFilterSort.filteredTasks, id: \.id) { task in
+                    ForEach(filteredTasks, id: \.id) { task in
                         TaskItemView(
                             task: task,
                             onEdit: { onEdit(task) },

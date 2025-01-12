@@ -18,6 +18,8 @@
 		855F43E42D0CA0C700593B9A /* NavTemplateShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; };
 		855F43EF2D0CA0C700593B9A /* NavTemplateShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; };
 		855F43F02D0CA0C700593B9A /* NavTemplateShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		85B8E83C2D32159A00CF06E4 /* NavTemplateShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; };
+		85B8E83D2D32159A00CF06E4 /* NavTemplateShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 855F43DA2D0CA0C400593B9A /* NavTemplateShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +79,13 @@
 			remoteGlobalIDString = 855F43D92D0CA0C400593B9A;
 			remoteInfo = NavTemplateShared;
 		};
+		85B8E83E2D32159B00CF06E4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 855E4E9E2CFC3B70002E12D4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 855F43D92D0CA0C400593B9A;
+			remoteInfo = NavTemplateShared;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -110,6 +119,17 @@
 			dstSubfolderSpec = 10;
 			files = (
 				855F43F02D0CA0C700593B9A /* NavTemplateShared.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		85B8E8402D32159B00CF06E4 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				85B8E83D2D32159A00CF06E4 /* NavTemplateShared.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -207,6 +227,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				851402152D2D51D700E7804F /* SwiftUI.framework in Frameworks */,
+				85B8E83C2D32159A00CF06E4 /* NavTemplateShared.framework in Frameworks */,
 				851402142D2D51D700E7804F /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -321,10 +342,12 @@
 				8514020F2D2D51D500E7804F /* Sources */,
 				851402102D2D51D500E7804F /* Frameworks */,
 				851402112D2D51D500E7804F /* Resources */,
+				85B8E8402D32159B00CF06E4 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				85B8E83F2D32159B00CF06E4 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				851402162D2D51D700E7804F /* TaskWidget */,
@@ -687,6 +710,11 @@
 			isa = PBXTargetDependency;
 			target = 855F43D92D0CA0C400593B9A /* NavTemplateShared */;
 			targetProxy = 855F43ED2D0CA0C700593B9A /* PBXContainerItemProxy */;
+		};
+		85B8E83F2D32159B00CF06E4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 855F43D92D0CA0C400593B9A /* NavTemplateShared */;
+			targetProxy = 85B8E83E2D32159B00CF06E4 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

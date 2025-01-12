@@ -123,19 +123,8 @@ struct TaskItemView: View {
         HStack(alignment: .top, spacing: 5) {
             // 1. Custom Checkbox
             CustomCheckbox(taskStatus: task.taskStatus) {
-                // Cycle through statuses: notStarted -> completed -> inProgress -> notStarted
-                let newStatus: TaskStatus
-                switch task.taskStatus {
-                case .notStarted:
-                    newStatus = .inProgress
-                case .inProgress:
-                    newStatus = .completed
-                case .completed:
-                    newStatus = .notStarted
-                @unknown default:
-                    newStatus = .notStarted  // Default to notStarted for unknown cases
-                }
-                taskModel.updateTaskStatus(task, status: newStatus)
+                let nextStatus = task.taskStatus.next()
+                taskModel.updateTaskStatus(task, status: nextStatus)
             }
             
             // 2. Task details
