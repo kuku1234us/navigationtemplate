@@ -56,8 +56,8 @@ struct CalendarHeaderView: View {
             
             // Bottom row - weekday letters
             HStack(spacing: 0) {
-                ForEach(weekdaySymbols, id: \.self) { symbol in
-                    Text(symbol)
+                ForEach(0..<7, id: \.self) { index in
+                    Text(weekdaySymbols[index])
                         .font(.footnote)
                         .foregroundColor(Color("MyTertiary"))
                         .frame(maxWidth: .infinity)

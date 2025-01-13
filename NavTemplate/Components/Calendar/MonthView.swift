@@ -1,98 +1,100 @@
+// MonthView.swift
+
 import SwiftUI
 
+/// A single month grid. Always 6 rows x 7 columns (Sun–Sat).
 struct MonthView: View {
-    @Binding var currentDate: Date
-    let calendar = Calendar.current
+    // The first day of the displayed month, e.g. 2023-06-01
+    @Binding var monthDate: Date 
     
-    // Gesture state
-    @GestureState private var dragOffset: CGFloat = 0
-    @State private var monthOffset: CGFloat = 0
-    
-    private func daysInMonth(for date: Date) -> [[Date?]] {
-        let monthInterval = calendar.dateInterval(of: .month, for: date)!
-        let firstWeekday = calendar.component(.weekday, from: monthInterval.start)
-        
-        // Calculate days before the first of the month
-        var days: [Date?] = Array(repeating: nil, count: firstWeekday - 1)
-        
-        // Add all days of the month
-        let daysInMonth = calendar.range(of: .day, in: .month, for: date)!.count
-        for day in 1...daysInMonth {
-            if let date = calendar.date(byAdding: .day, value: day - 1, to: monthInterval.start) {
-                days.append(date)
-            }
-        }
-        
-        // Add remaining days to complete the last week
-        while days.count % 7 != 0 {
-            days.append(nil)
-        }
-        
-        // Split into weeks
-        return stride(from: 0, to: days.count, by: 7).map {
-            Array(days[$0..<min($0 + 7, days.count)])
-        }
+    private var weeks: [[Date?]] {
+        // Generate a 6 x 7 matrix of dates (some may be nil if they fall outside the displayed month).
+        generateWeeks(for: monthDate)
     }
-    
-    private func changeMonth(by value: Int) {
-        if let newDate = calendar.date(byAdding: .month, value: value, to: currentDate) {
-            withAnimation {
-                currentDate = newDate
-            }
-        }
-    }
-    
+
     var body: some View {
-        GeometryReader { geometry in
-            HStack(spacing: 0) {
-                let weeks = daysInMonth(for: currentDate)
-                
-                VStack(spacing: 8) {
-                    ForEach(weeks.indices, id: \.self) { weekIndex in
-                        HStack(spacing: 0) {
-                            ForEach(0..<7) { dayIndex in
-                                if let date = weeks[weekIndex][dayIndex] {
-                                    let day = calendar.component(.day, from: date)
-                                    let isToday = calendar.isDate(date, inSameDayAs: Date())
-                                    
-                                    Text("\(day)")
-                                        .font(.system(.body, design: .rounded))
-                                        .foregroundColor(isToday ? Color("Accent") : Color("MySecondary"))
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            isToday ?
-                                            Circle()
-                                                .fill(Color("Accent").opacity(0.2))
-                                                .frame(width: 32, height: 32)
-                                            : nil
-                                        )
-                                } else {
-                                    Text("")
-                                        .frame(maxWidth: .infinity)
-                                }
-                            }
+        VStack(spacing: 0) {
+            // Text(monthNameString(from: monthDate))
+            //     .font(.headline)            
+            // The 6 rows of days
+            ForEach(0..<6, id: \.self) { row in
+                HStack(spacing: 0) {
+                    ForEach(0..<7, id: \.self) { col in
+                        if let date = weeks[row][col] {
+                            Text(dayString(from: date))
+                                .frame(maxWidth: .infinity, minHeight: 30)
+                                .foregroundColor(
+                                    isSameMonth(date, as: monthDate) ? .primary : .gray
+                                )
+                        } else {
+                            Text("")  // blank
+                                .frame(maxWidth: .infinity, minHeight: 30)
                         }
                     }
                 }
-                .frame(width: geometry.size.width)
-                .offset(x: dragOffset + monthOffset)
             }
         }
-        .gesture(
-            DragGesture()
-                .updating($dragOffset) { value, state, _ in
-                    state = value.translation.width
-                }
-                .onEnded { value in
-                    let threshold = UIScreen.main.bounds.width * 0.2
-                    if value.translation.width > threshold {
-                        changeMonth(by: -1)
-                    } else if value.translation.width < -threshold {
-                        changeMonth(by: 1)
-                    }
-                }
-        )
-        .animation(.spring(duration: 0.3), value: dragOffset)
     }
-} 
+
+    // MARK: - Helpers
+
+    /// Return localized month name + year, e.g. "June 2023"
+    private func monthNameString(from date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "LLLL yyyy"  // e.g. "June 2023"
+        return fmt.string(from: date)
+    }
+
+    /// Return "Sun", "Mon", "Tue", etc.
+    private func shortWeekdaySymbol(_ col: Int) -> String {
+        let symbols = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+        return symbols[col]
+    }
+
+    /// Return the day-of-month as a string, e.g. "7"
+    private func dayString(from date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "d"
+        return fmt.string(from: date)
+    }
+
+    /// Whether `date` is in the same calendar month as `reference`.
+    private func isSameMonth(_ date: Date, as reference: Date) -> Bool {
+        let cal = Calendar.current
+        return cal.component(.month, from: date) == cal.component(.month, from: reference)
+            && cal.component(.year, from: date) == cal.component(.year, from: reference)
+    }
+
+    /// Build a 6x7 matrix of Date? for the given month.
+    private func generateWeeks(for monthDate: Date) -> [[Date?]] {
+        var matrix = Array(repeating: Array(repeating: Date?.none, count: 7), count: 6)
+
+        let cal = Calendar.current
+
+        // 1) First day of this month, e.g. "2023-06-01 00:00"
+        let comps = cal.dateComponents([.year, .month], from: monthDate)
+        guard let firstOfMonth = cal.date(from: comps) else { return matrix }
+
+        let range = cal.range(of: .day, in: .month, for: firstOfMonth) ?? 1..<1
+        let daysInMonth = range.count
+
+        // 2) The weekday of the first day (Sun=1 ... Sat=7 in many locales)
+        let firstWeekday = cal.component(.weekday, from: firstOfMonth)  // e.g. "5" if Thu
+        // We want Sunday=0..Saturday=6 in our code => shift by 1
+        let firstIndex = (firstWeekday - 1) % 7
+
+        var row = 0, col = firstIndex
+        // 3) Fill in each day
+        for day in 1...daysInMonth {
+            let dayDate = cal.date(byAdding: .day, value: day-1, to: firstOfMonth)!
+            matrix[row][col] = dayDate
+            col += 1
+            if col > 6 {
+                col = 0
+                row += 1
+                if row > 5 { break }
+            }
+        }
+        return matrix
+    }
+}

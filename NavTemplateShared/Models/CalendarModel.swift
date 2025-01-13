@@ -41,7 +41,7 @@ public enum CalendarType: String, CaseIterable {
         case .week:
             return "calendar.badge.clock.fill"
         case .month:
-            return "calendar.fill"
+            return "calendar.circle.fill"
         case .year:
             return "calendar.badge.exclamationmark.fill"
         }

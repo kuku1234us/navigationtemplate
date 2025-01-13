@@ -42,8 +42,8 @@ struct CalendarPage: Page {
                     )
                     
                     // Month view
-                    MonthView(currentDate: $curDate)
-                        .padding()
+                    MonthCarouselView(currentDate: $curDate)
+                    .padding(.horizontal, 12)
                     
                     Spacer()
                 }
