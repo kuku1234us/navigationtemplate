@@ -299,42 +299,6 @@ public class ProjectModel: ObservableObject {
         return projects.isEmpty ? nil : projects
     }
     
-    private func scanVaultAndLoadProjects() async {
-        do {
-            // Original vault scanning logic
-            let markdownFiles = try ProjectFileManager.shared.findAllMarkdownFiles()
-            var newProjects: [ProjectMetadata] = []
-            var allTasks: [TaskItem] = []
-            
-            for fileURL in markdownFiles {
-                if let (content, projId) = try ProjectFileManager.shared.readProjectFile(fileURL) {
-                    if let metadata = try parseProjectMetadata(from: fileURL, content: content) {
-                        newProjects.append(metadata)
-                        
-                        if let tasks = ProjectFileManager.shared.parseTasksFromContent(
-                            content,
-                            projId: metadata.projId
-                        ) {
-                            allTasks.append(contentsOf: tasks)
-                        }
-                    }
-                }
-            }
-            
-            // Update projects array
-            self.projects = newProjects
-            
-            // Update TaskModel
-            TaskModel.shared.updateAllTasks(allTasks)
-            
-            // Update settings with current project IDs
-            updateSettingsWithCurrentProjects()
-            
-        } catch {
-            print("Error scanning vault for projects: \(error)")
-        }
-    }
-    
     private func updateSettingsWithCurrentProjects() {
         let currentProjectIds = Set(projects.map { $0.projId })
         
@@ -351,94 +315,6 @@ public class ProjectModel: ObservableObject {
         updateProjectSettings(
             selectedProjects: selectedProjects,
             projectOrder: projectOrder
-        )
-        
-        // Clean up unused icons
-        let usedIcons = Set(projects.compactMap { $0.icon })
-        ImageCache.shared.removeUnusedImages(folder: "icons", currentlyUsedFilenames: usedIcons)
-    }
-    
-    private func parseProjectMetadata(from fileURL: URL) throws -> ProjectMetadata? {
-        let content = try String(contentsOf: fileURL, encoding: .utf8)
-        let lines = content.components(separatedBy: .newlines)
-        
-        // Find frontmatter boundaries
-        guard let startIndex = lines.firstIndex(of: "---") else { 
-            Logger.shared.error("[E011] Failed to find opening frontmatter marker in: \(fileURL.lastPathComponent)")
-            return nil 
-        }
-        guard let endIndex = lines.dropFirst(startIndex + 1).firstIndex(of: "---") else { 
-            Logger.shared.error("[E012] Failed to find closing frontmatter marker in: \(fileURL.lastPathComponent)")
-            return nil 
-        }
-        
-        // Extract frontmatter
-        let frontmatter = lines[(startIndex + 1)..<(startIndex + 1 + endIndex)]
-        var metadata: [String: String] = [:]
-        
-        for line in frontmatter {
-            let parts = line.split(separator: ":", maxSplits: 1).map(String.init)
-            if parts.count == 2 {
-                let key = parts[0].trimmingCharacters(in: CharacterSet.whitespaces)
-                let value = parts[1].trimmingCharacters(in: CharacterSet.whitespaces)
-                metadata[key] = value
-            }
-        }
-        
-        // Get file attributes
-        let fileAttributes: [FileAttributeKey: Any]
-        do {
-            fileAttributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
-        } catch {
-            Logger.shared.error("[E013] Failed to get file attributes for: \(fileURL.lastPathComponent), error: \(error)")
-            throw error
-        }
-        
-        let creationDate = fileAttributes[.creationDate] as? Date ?? Date()
-        let modificationDate = fileAttributes[.modificationDate] as? Date ?? Date()
-        
-        // Check if projId is missing and write it if needed
-        let projId: Int64
-        if let existingProjId = metadata["projId"].flatMap({ Int64($0) }) {
-            projId = existingProjId
-        } else {
-            // Create new projId from creation time
-            projId = Int64(creationDate.timeIntervalSince1970)
-            
-            // Insert projId into frontmatter
-            var updatedLines = lines
-            let projIdLine = "projId: \(projId)"
-            updatedLines.insert(projIdLine, at: startIndex + 1)
-            
-            // Write back to file
-            let updatedContent = updatedLines.joined(separator: "\n")
-            do {
-                try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
-                Logger.shared.info("[I001] Successfully added projId: \(projId) to project file: \(fileURL.lastPathComponent)")
-            } catch {
-                Logger.shared.error("[E014] Failed to write projId to file: \(fileURL.lastPathComponent), error: \(error)")
-                throw error
-            }
-        }
-        
-        // Parse banner URL
-        var bannerURL: URL? = nil
-        if let bannerPath = metadata["banner"] {
-            bannerURL = URL(string: bannerPath)
-        }
-        
-        // Parse icon filename directly
-        let iconFilename = metadata["icon"]
-        
-        return ProjectMetadata(
-            projId: projId,
-            banner: bannerURL,
-            projectStatus: ProjectStatus.from(metadata["projectStatus"] ?? "Progress"),
-            noteType: metadata["notetype"] ?? "Project",
-            creationTime: creationDate,
-            modifiedTime: modificationDate,
-            filePath: fileURL.path,
-            icon: iconFilename
         )
     }
     

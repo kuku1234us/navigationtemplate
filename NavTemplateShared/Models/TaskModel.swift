@@ -126,7 +126,6 @@ public class TaskModel: ObservableObject {
         // Load filter toggles from UserDefaults
         self.filterToggles = Self.loadFilterToggles()
         
-        // projectModel.loadProjects()
         setupProjectObserver()
         setupSortOrderObserver()
         loadAllTasks()
