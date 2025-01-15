@@ -7,7 +7,8 @@ internal class ProjectFileManager {
     
     private init() {}
     
-    func findAllProjectFiles() throws -> [URL] {
+    // Returns all markdown files without checking their content
+    func findAllMarkdownFiles() throws -> [URL] {
         guard let vault = ObsidianVaultAccess.shared.vaultURL else {
             throw ProjectFileError.noVaultAccess
         }
@@ -25,48 +26,60 @@ internal class ProjectFileManager {
         let fileManager = FileManager.default
         var results: [URL] = []
         
+        // Request creation date and modification date along with isDirectory
+        let keys: [URLResourceKey] = [
+            .isDirectoryKey,
+            .creationDateKey,
+            .contentModificationDateKey
+        ]
+        
         let contents = try fileManager.contentsOfDirectory(
             at: directory,
-            includingPropertiesForKeys: [.isDirectoryKey],
+            includingPropertiesForKeys: keys,  // Request the keys we need
             options: [.skipsHiddenFiles]
         )
         
         for url in contents {
-            let resourceValues = try url.resourceValues(forKeys: [.isDirectoryKey])
+            let resourceValues = try url.resourceValues(forKeys: Set(keys))
             if resourceValues.isDirectory == true {
                 // Recursively search subdirectories
                 results.append(contentsOf: try findMarkdownFiles(in: url))
             } else if url.pathExtension == "md" {
-                // Check if file has "notetype: Project" in frontmatter
-                if try isProjectFile(url) {
-                    results.append(url)
-                }
+                results.append(url)
             }
         }
         
         return results
     }
     
-    private func isProjectFile(_ url: URL) throws -> Bool {
-        let content = try String(contentsOf: url, encoding: .utf8)
-        return content.contains("notetype: Project")
-    }
-    
-    func parseTasksFromFile(_ url: URL) throws -> [TaskItem]? {
+    // Returns the content and projId if it's a project file
+    func readProjectFile(_ url: URL) throws -> (content: String, projId: Int64)? {
         let content = try String(contentsOf: url, encoding: .utf8)
             .replacingOccurrences(of: "\0", with: "\n")
+            
+        // Check if it's a project file
+        guard content.contains("notetype: Project") else {
+            return nil
+        }
         
-        let projectName = url.deletingPathExtension().lastPathComponent
-        let projectPath = url.path  // Get full path
+        // Get projId from ProjectModel if file exists there
+        if let project = ProjectModel.shared.getProject(atPath: url.path) {
+            return (content, project.projId)
+        }
         
+        // Generate new projId if needed
+        let projId = Int64(Date().timeIntervalSince1970 * 1000)
+        return (content, projId)
+    }
+    
+    public func parseTasksFromContent(_ content: String, projId: Int64) -> [TaskItem]? {
         var tasks: [TaskItem] = []
         
         // Parse each line
         content.enumerateLines { [weak self] line, _ in
-            
             // Check if line is a task
             if let taskLine = self?.extractTaskLine(line) {
-                if let task = self?.parseTaskLine(taskLine, projectName: projectName, projectPath: projectPath) {
+                if let task = self?.parseTaskLine(taskLine, projId: projId) {
                     tasks.append(task)
                 }
             }
@@ -100,7 +113,7 @@ internal class ProjectFileManager {
         return nil
     }
     
-    private func parseTaskLine(_ line: String, projectName: String, projectPath: String) -> TaskItem? {
+    private func parseTaskLine(_ line: String, projId: Int64) -> TaskItem? {
         // Extract status character between [ and ]
         let statusPattern = "\\[(.?)\\]"
         let taskStatus: TaskStatus
@@ -138,6 +151,9 @@ internal class ProjectFileManager {
         
         // Extract task name and remaining line
         taskName = String(line[..<endIndex]).trimmingCharacters(in: .whitespaces)
+        taskName = taskName
+            .replacingOccurrences(of: "\\n", with: "\n")  // Unescape newlines
+            .replacingOccurrences(of: "\\#", with: "#")   // Unescape hash
         if endIndex < line.endIndex {
             remainingLine = String(line[endIndex...])
         }
@@ -190,22 +206,17 @@ internal class ProjectFileManager {
             name: taskName,
             taskStatus: taskStatus,
             priority: priority,
-            projectName: projectName,
-            projectFilePath: projectPath,
+            projId: projId,
             dueDate: dueDate,
             tags: tags,
             createTime: createTime
         )
     }
     
-    enum ProjectFileError: Error {
-        case noVaultAccess
-        case invalidFormat
-    }
-    
     func removeTask(_ task: TaskItem) throws {
-        let file = URL(fileURLWithPath: task.projectFilePath)
-        let content = try String(contentsOf: file, encoding: .utf8)
+        let filePath = try ProjectModel.shared.getProjectFilePath(task.projId)
+        let fileURL = URL(fileURLWithPath: filePath)
+        let content = try String(contentsOf: fileURL, encoding: .utf8)
         var lines = content.components(separatedBy: .newlines)
         
         if let index = lines.firstIndex(where: { line in 
@@ -213,7 +224,7 @@ internal class ProjectFileManager {
         }) {
             lines.remove(at: index)
             let updatedContent = lines.joined(separator: "\n")
-            try updatedContent.write(to: file, atomically: true, encoding: .utf8)
+            try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
         }
     }
     
@@ -248,9 +259,10 @@ internal class ProjectFileManager {
         return ""
     }
     
-    func updateTask(_ task: TaskItem) throws {
-        let file = URL(fileURLWithPath: task.projectFilePath)
-        let content = try String(contentsOf: file, encoding: .utf8)
+    public func updateTask(_ task: TaskItem) throws {
+        let filePath = try ProjectModel.shared.getProjectFilePath(task.projId)
+        let fileURL = URL(fileURLWithPath: filePath)
+        let content = try String(contentsOf: fileURL, encoding: .utf8)
         var lines = content.components(separatedBy: .newlines)
         
         if let index = lines.firstIndex(where: { line in
@@ -266,7 +278,7 @@ internal class ProjectFileManager {
             lines[index] = prefix + updatedLine
             
             let updatedContent = lines.joined(separator: "\n")
-            try updatedContent.write(to: file, atomically: true, encoding: .utf8)
+            try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
         }
     }
     

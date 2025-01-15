@@ -138,7 +138,7 @@ struct TaskEditor: View {
         
         // Set initial project (Inbox for new tasks, or existing project)
         if let task = task,
-           let project = ProjectModel.shared.getProject(atPath: task.projectFilePath) {
+           let project = ProjectModel.shared.getProject(withId: task.projId) {
             _selectedProject = State(initialValue: project)
         } else {
             // Default to Inbox project
@@ -188,7 +188,7 @@ struct TaskEditor: View {
                                 existingTask,
                                 newName: text.trimmingCharacters(in: .whitespacesAndNewlines),
                                 newPriority: selectedPriority,
-                                newProjectPath: selectedProject.filePath
+                                newProjId: selectedProject.projId
                             )
                         } else {
                             // Create new task
@@ -197,8 +197,7 @@ struct TaskEditor: View {
                                 name: text.trimmingCharacters(in: .whitespacesAndNewlines),
                                 taskStatus: .notStarted,
                                 priority: selectedPriority,
-                                projectName: selectedProject.projectName,
-                                projectFilePath: selectedProject.filePath,
+                                projId: selectedProject.projId,
                                 dueDate: nil,
                                 tags: [],
                                 createTime: Date()

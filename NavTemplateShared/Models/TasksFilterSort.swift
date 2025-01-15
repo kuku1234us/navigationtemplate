@@ -41,7 +41,7 @@ public class TasksFilterSort: ObservableObject {
     private func updateFilteredTasks() {
         // First filter tasks by selected projects
         var tasks = taskModel.tasks.filter { task in
-            guard let project = projectModel.getProject(atPath: task.projectFilePath) else {
+            guard let project = projectModel.getProject(withId: task.projId) else {
                 return false
             }            
             return projectModel.isProjectSelected(project.projId)

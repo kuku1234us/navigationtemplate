@@ -223,60 +223,139 @@ public class ProjectModel: ObservableObject {
     @MainActor
     public func loadProjects() async {
         do {
-            var projectMetadata: [ProjectMetadata] = []
+            // First try to load from ProjectsSummary.md
+            if let projects = try loadFromProjectsSummary() {
+                // Update projects array
+                self.projects = projects
+                
+                // Load tasks for each project
+                var allTasks: [TaskItem] = []
+                for project in projects {
+                    let fileURL = URL(fileURLWithPath: project.filePath)
+                    if let (content, _) = try ProjectFileManager.shared.readProjectFile(fileURL) {
+                        if let tasks = ProjectFileManager.shared.parseTasksFromContent(
+                            content,
+                            projId: project.projId
+                        ) {
+                            allTasks.append(contentsOf: tasks)
+                        }
+                    }
+                }
+                
+                // Update TaskModel
+                TaskModel.shared.updateAllTasks(allTasks)
+                
+                // Update settings with current project IDs
+                updateSettingsWithCurrentProjects()
+                return
+            }
             
-            // Load all project files
-            let projectFiles = try ProjectFileManager.shared.findAllProjectFiles()
-            for fileURL in projectFiles {
-                if let metadata = try parseProjectMetadata(from: fileURL) {
-                    projectMetadata.append(metadata)
+            // If ProjectsSummary.md loading fails, reconcile projects
+            await reconcileProjects()
+            
+        } catch {
+            print("Error loading projects: \(error)")
+            // If loading from summary fails, reconcile projects
+            await reconcileProjects()
+        }
+    }
+    
+    private func loadFromProjectsSummary() throws -> [ProjectMetadata]? {
+        let summaryURL = try getProjectsSummaryURL()
+        let data = try Data(contentsOf: summaryURL)
+        let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        
+        guard let jsonArray = jsonArray else {
+            return nil
+        }
+        
+        var projects: [ProjectMetadata] = []
+        
+        for json in jsonArray {
+            guard let projId = json["projId"] as? Int64,
+                  let projectStatus = json["projectStatus"] as? String,
+                  let noteType = json["noteType"] as? String,
+                  let filePath = json["filePath"] as? String else {
+                continue
+            }
+            
+            let banner = (json["banner"] as? String).flatMap { URL(string: $0) }
+            let icon = json["icon"] as? String
+            
+            let project = ProjectMetadata(
+                projId: projId,
+                banner: banner,
+                projectStatus: ProjectStatus.from(projectStatus),
+                noteType: noteType,
+                creationTime: Date(),  // These will be updated when we read the actual file
+                modifiedTime: Date(),
+                filePath: filePath,
+                icon: icon
+            )
+            
+            projects.append(project)
+        }
+        
+        return projects.isEmpty ? nil : projects
+    }
+    
+    private func scanVaultAndLoadProjects() async {
+        do {
+            // Original vault scanning logic
+            let markdownFiles = try ProjectFileManager.shared.findAllMarkdownFiles()
+            var newProjects: [ProjectMetadata] = []
+            var allTasks: [TaskItem] = []
+            
+            for fileURL in markdownFiles {
+                if let (content, projId) = try ProjectFileManager.shared.readProjectFile(fileURL) {
+                    if let metadata = try parseProjectMetadata(from: fileURL, content: content) {
+                        newProjects.append(metadata)
+                        
+                        if let tasks = ProjectFileManager.shared.parseTasksFromContent(
+                            content,
+                            projId: metadata.projId
+                        ) {
+                            allTasks.append(contentsOf: tasks)
+                        }
+                    }
                 }
             }
             
-            // 3. Get set of all current project IDs
-            let currentProjectIds = Set(projectMetadata.map { $0.projId })
+            // Update projects array
+            self.projects = newProjects
             
-            // 4. Find new projects (in current load but not in settings)
-            let newProjectIds = currentProjectIds.subtracting(Set(settings.projectOrder))
+            // Update TaskModel
+            TaskModel.shared.updateAllTasks(allTasks)
             
-            // Find removed projects (in settings but not in current load)
-            let removedProjectIds = Set(settings.projectOrder).subtracting(currentProjectIds)
-            
-            // 5. Update settings if needed
-            if !newProjectIds.isEmpty || !removedProjectIds.isEmpty {
-                var updatedOrder = settings.projectOrder
-                var updatedSelected = settings.selectedProjects
-                
-                // Remove old projects
-                updatedOrder.removeAll { removedProjectIds.contains($0) }
-                updatedSelected.subtract(removedProjectIds)
-                
-                // Add new projects to the end of order and to selected
-                updatedOrder.append(contentsOf: newProjectIds)
-                updatedSelected.formUnion(newProjectIds)
-                
-                // Update settings
-                updateProjectSettings(
-                    selectedProjects: updatedSelected,
-                    projectOrder: updatedOrder
-                )
-            }
-            
-            // 6. Sort by modified time
-            projectMetadata.sort { $0.modifiedTime > $1.modifiedTime }
-            
-            // 7. Update model and notify UI
-            self.projects = projectMetadata
-            saveProjectsToUserDefaults()
-            self.objectWillChange.send()
-            
-            // Clean up unused project icons
-            let currentIcons = Set(projectMetadata.compactMap { $0.icon })
-            ImageCache.shared.removeUnusedImages(folder: "projecticon", currentlyUsedFilenames: currentIcons)
+            // Update settings with current project IDs
+            updateSettingsWithCurrentProjects()
             
         } catch {
-            Logger.shared.error("[E015] Error loading projects: \(error)")
+            print("Error scanning vault for projects: \(error)")
         }
+    }
+    
+    private func updateSettingsWithCurrentProjects() {
+        let currentProjectIds = Set(projects.map { $0.projId })
+        
+        // Update selected projects
+        var selectedProjects = settings.selectedProjects
+        selectedProjects.formIntersection(currentProjectIds)
+        
+        // Update project order
+        var projectOrder = settings.projectOrder.filter { currentProjectIds.contains($0) }
+        let newProjectIds = currentProjectIds.subtracting(Set(projectOrder))
+        projectOrder.append(contentsOf: newProjectIds)
+        
+        // Update settings
+        updateProjectSettings(
+            selectedProjects: selectedProjects,
+            projectOrder: projectOrder
+        )
+        
+        // Clean up unused icons
+        let usedIcons = Set(projects.compactMap { $0.icon })
+        ImageCache.shared.removeUnusedImages(folder: "icons", currentlyUsedFilenames: usedIcons)
     }
     
     private func parseProjectMetadata(from fileURL: URL) throws -> ProjectMetadata? {
@@ -494,6 +573,172 @@ public class ProjectModel: ObservableObject {
                 icon: cached.icon  // Just pass the icon filename
             )
         }
+    }
+    
+    public func reconcileProjects() {
+        do {
+            let markdownFiles = try ProjectFileManager.shared.findAllMarkdownFiles()
+            var projectMetadata: [ProjectMetadata] = []
+            var allTasks: [TaskItem] = []
+            
+            // Load all project files
+            for fileURL in markdownFiles {
+                if let (content, projId) = try ProjectFileManager.shared.readProjectFile(fileURL) {
+                    // Parse project metadata from the content we already have
+                    if let metadata = try parseProjectMetadata(from: fileURL, content: content) {
+                        projectMetadata.append(metadata)
+                    
+                        // Parse tasks from the same content
+                        if let tasks = ProjectFileManager.shared.parseTasksFromContent(
+                            content,
+                            projId: projId
+                        ) {
+                            allTasks.append(contentsOf: tasks)
+                        }
+                    }
+                }
+            }
+            
+            // Get set of all current project IDs
+            let currentProjectIds = Set(projectMetadata.map { $0.projId })
+            
+            // Update project settings
+            var selectedProjects = settings.selectedProjects
+            selectedProjects.formIntersection(currentProjectIds)  // Remove any non-existent projects
+            
+            // Update project order, removing any non-existent projects
+            var projectOrder = settings.projectOrder.filter { currentProjectIds.contains($0) }
+            
+            // Add any new projects to the order
+            let newProjects = currentProjectIds.subtracting(Set(projectOrder))
+            projectOrder.append(contentsOf: newProjects)
+            
+            // Update settings
+            updateProjectSettings(
+                selectedProjects: selectedProjects,
+                projectOrder: projectOrder
+            )
+            
+            // Clean up unused icons using ImageCache
+            let usedIcons = Set(projectMetadata.compactMap { $0.icon })
+            ImageCache.shared.removeUnusedImages(folder: "icons", currentlyUsedFilenames: usedIcons)
+            
+            // Update tasks in TaskModel
+            TaskModel.shared.updateAllTasks(allTasks)
+            
+            // Write ProjectsSummary.md
+            let summaryURL = try getProjectsSummaryURL()
+            let jsonData = try JSONSerialization.data(
+                withJSONObject: projectMetadata.map { self.extractMetadata(from: $0) },
+                options: .prettyPrinted
+            )
+            try jsonData.write(to: summaryURL, options: .atomic)
+            
+            print("ProjectsSummary.md updated successfully.")
+        } catch {
+            print("Error during project reconciliation: \(error)")
+        }
+    }
+    
+    private func extractMetadata(from project: ProjectMetadata) -> [String: Any] {
+        var metadata: [String: Any] = [
+            "projId": project.projId,
+            "projectStatus": project.projectStatus.rawValue,
+            "noteType": project.noteType,
+            "filePath": project.filePath
+        ]
+        
+        if let banner = project.banner {
+            metadata["banner"] = banner.absoluteString
+        }
+        if let icon = project.icon {
+            metadata["icon"] = icon
+        }
+        
+        return metadata
+    }
+    
+    private func getProjectsSummaryURL() throws -> URL {
+        guard let vaultURL = ObsidianVaultAccess.shared.vaultURL else {
+            throw ProjectFileError.noVaultAccess
+        }
+        
+        let summaryURL = vaultURL.appendingPathComponent("Category Notes/Projects/ProjectsSummary.md")
+        if !FileManager.default.fileExists(atPath: summaryURL.path) {
+            FileManager.default.createFile(atPath: summaryURL.path, contents: nil)
+        }
+        
+        return summaryURL
+    }
+    
+    // Add new method that accepts content
+    private func parseProjectMetadata(from fileURL: URL, content: String) throws -> ProjectMetadata? {
+        // Get file attributes - these will now use cached values
+        let resourceValues = try fileURL.resourceValues(forKeys: [
+            .creationDateKey,
+            .contentModificationDateKey
+        ])
+        
+        let creationDate = resourceValues.creationDate ?? Date()
+        let modificationDate = resourceValues.contentModificationDate ?? Date()
+        
+        // Parse metadata from content
+        var metadata: [String: String] = [:]
+        var inFrontmatter = false
+        let lines = content.components(separatedBy: .newlines)
+        
+        for line in lines {
+            if line == "---" {
+                inFrontmatter = !inFrontmatter
+                continue
+            }
+            
+            if inFrontmatter {
+                let parts = line.split(separator: ":", maxSplits: 1).map(String.init)
+                if parts.count == 2 {
+                    let key = parts[0].trimmingCharacters(in: .whitespaces)
+                    let value = parts[1].trimmingCharacters(in: .whitespaces)
+                    metadata[key] = value
+                }
+            }
+        }
+        
+        // Verify it's a project file
+        guard metadata["notetype"]?.lowercased() == "project" else {
+            return nil
+        }
+        
+        // Parse banner URL
+        var bannerURL: URL? = nil
+        if let bannerPath = metadata["banner"] {
+            bannerURL = URL(string: bannerPath)
+        }
+        
+        // Get or generate projId
+        let projId: Int64
+        if let existingId = metadata["projId"].flatMap({ Int64($0) }) {
+            projId = existingId
+        } else {
+            projId = Int64(creationDate.timeIntervalSince1970 * 1000)
+        }
+        
+        return ProjectMetadata(
+            projId: projId,
+            banner: bannerURL,
+            projectStatus: ProjectStatus.from(metadata["projectStatus"] ?? "Progress"),
+            noteType: metadata["notetype"] ?? "Project",
+            creationTime: creationDate,
+            modifiedTime: modificationDate,
+            filePath: fileURL.path,
+            icon: metadata["icon"]
+        )
+    }
+    
+    public func getProjectFilePath(_ projId: Int64) throws -> String {
+        guard let project = getProject(withId: projId) else {
+            throw ProjectFileError.projectNotFound
+        }
+        return project.filePath
     }
 }
 

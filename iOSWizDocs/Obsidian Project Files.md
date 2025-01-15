@@ -29,6 +29,10 @@ Project files in the vault are Markdown files that contain project metadata in f
    > - [x] Task 2 <span class="priority">High</span> <span class="createTime">1703123456790</span>
    ```
 
+## ProjectsSummary.md
+
+In addition to individual project files, the `ProjectsSummary.md` file provides a consolidated list of all projects in JSON format. This file is located at `Category Notes/Projects/ProjectsSummary.md` and is used to efficiently access project files without traversing the entire directory. It is automatically updated whenever project metadata changes, or when projects are added or removed.
+
 ## Project Icons
 
 ### Location

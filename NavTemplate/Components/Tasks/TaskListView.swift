@@ -46,7 +46,7 @@ struct TaskListView: View {
         return tasksFilterSort.filteredTasks.filter { task in
             let nameMatch = task.name.lowercased().contains(searchQuery)
             
-            let projectMatch = ProjectModel.shared.getProject(atPath: task.projectFilePath)?
+            let projectMatch = ProjectModel.shared.getProject(withId: task.projId)?
                 .projectName
                 .lowercased()
                 .contains(searchQuery) ?? false

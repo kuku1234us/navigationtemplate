@@ -41,8 +41,7 @@ public struct TaskItem: Identifiable {
     public var name: String
     public var taskStatus: TaskStatus
     public var priority: TaskPriority
-    public var projectName: String
-    public var projectFilePath: String
+    public var projId: Int64
     public var dueDate: Date?
     public var tags: [String]
     public var createTime: Date
@@ -52,8 +51,7 @@ public struct TaskItem: Identifiable {
         name: String,
         taskStatus: TaskStatus,
         priority: TaskPriority,
-        projectName: String,
-        projectFilePath: String,
+        projId: Int64,
         dueDate: Date? = nil,
         tags: [String] = [],
         createTime: Date
@@ -62,8 +60,7 @@ public struct TaskItem: Identifiable {
         self.name = name
         self.taskStatus = taskStatus
         self.priority = priority
-        self.projectName = projectName
-        self.projectFilePath = projectFilePath
+        self.projId = projId
         self.dueDate = dueDate
         self.tags = tags
         self.createTime = createTime
@@ -143,7 +140,7 @@ public class TaskModel: ObservableObject {
     }
     
     public func getProjectForTask(_ task: TaskItem) -> ProjectMetadata? {
-        return projectModel.getProject(atPath: task.projectFilePath)
+        return projectModel.getProject(withId: task.projId)
     }
     
     public func sortTasksByProjectModified() {
@@ -167,23 +164,34 @@ public class TaskModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     public func loadAllTasks() {
-        do {
-            let projectFiles = try projectFileManager.findAllProjectFiles()
-            var allTasks: [TaskItem] = []
-            
-            for projectFile in projectFiles {
-                if let tasks = try projectFileManager.parseTasksFromFile(projectFile) {
-                    allTasks.append(contentsOf: tasks)
-                }
-            }
-
-            self.tasks = allTasks
-
-            // Apply current sort order instead of default sort
+        // Set up deferred UI update
+        defer {
             DispatchQueue.main.async {
-                self.applySortOrder(TaskSortOrder.shared.currentOrder)
                 self.objectWillChange.send()
             }
+        }
+        
+        do {
+            let markdownFiles = try projectFileManager.findAllMarkdownFiles()
+            var allTasks: [TaskItem] = []
+            
+            for fileURL in markdownFiles {
+                // Try to read the file as a project file
+                if let (content, projId) = try projectFileManager.readProjectFile(fileURL) {
+                    let projectName = fileURL.deletingPathExtension().lastPathComponent
+                    
+                    // Parse tasks from the content
+                    if let tasks = projectFileManager.parseTasksFromContent(
+                        content,
+                        projId: projId
+                    ) {
+                        allTasks.append(contentsOf: tasks)
+                    }
+                }
+            }
+            
+            self.tasks = allTasks
+            self.applySortOrder(TaskSortOrder.shared.currentOrder)
             
             // Update widget tasks after loading
             updateWidgetTasks()
@@ -202,7 +210,7 @@ public class TaskModel: ObservableObject {
         
         // Remove from file
         do {
-            try projectFileManager.removeTaskFromFile(task.projectFilePath, taskId: task.id)
+            try projectFileManager.removeTask(task)  // ProjectFileManager now uses projId internally
         } catch {
             print("Error removing task from file: \(error)")
             return
@@ -266,8 +274,11 @@ public class TaskModel: ObservableObject {
         // 1. Checkbox with status
         components.append("- [\(task.taskStatus.rawValue)]")
         
-        // 2. Task Name
-        components.append(task.name)
+        // 2. Task Name (escaped)
+        let escapedName = task.name
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "#", with: "\\#")
+        components.append(escapedName)
         
         // 3. Due Date (if exists)
         if let dueDate = task.dueDate {
@@ -335,7 +346,9 @@ public class TaskModel: ObservableObject {
         // Add to file
         do {
             let taskText = taskToText(task)
-            try projectFileManager.appendTaskToFile(task.projectFilePath, taskText: taskText)
+            if let project = projectModel.getProject(withId: task.projId) {
+                try projectFileManager.appendTaskToFile(project.filePath, taskText: taskText)
+            }
         } catch {
             print("Error adding task to file: \(error)")
         }
@@ -343,7 +356,7 @@ public class TaskModel: ObservableObject {
         updateWidgetTasks()
     }
     
-    public func updateTask(_ task: TaskItem, newName: String, newPriority: TaskPriority, newProjectPath: String) {
+    public func updateTask(_ task: TaskItem, newName: String, newPriority: TaskPriority, newProjId: Int64) {
         defer {
             DispatchQueue.main.async {
                 self.objectWillChange.send()
@@ -354,26 +367,22 @@ public class TaskModel: ObservableObject {
         var updatedTask = task
         updatedTask.name = newName
         updatedTask.priority = newPriority
+        updatedTask.projId = newProjId
         
         // Check if project changed
-        let isProjectChanged = task.projectFilePath != newProjectPath
+        let isProjectChanged = task.projId != newProjId
         
         if isProjectChanged {
-            updatedTask.projectFilePath = newProjectPath
-            if let project = projectModel.getProject(atPath: newProjectPath) {
-                updatedTask.projectName = project.projectName
-            }
-            
-            // Handle project change in files
             do {
-                // 1. Remove from old project
-                try projectFileManager.removeTaskFromFile(task.projectFilePath, taskId: task.id)
+                // Remove from old project
+                try projectFileManager.removeTask(task)
                 
-                // 2. Add to new project
-                let newTaskText = taskToText(updatedTask)
-                try projectFileManager.appendTaskToFile(newProjectPath, taskText: newTaskText)
+                // Add to new project
+                if let newProject = projectModel.getProject(withId: newProjId) {
+                    try projectFileManager.appendTaskToFile(newProject.filePath, taskText: taskToText(updatedTask))
+                }
             } catch {
-                print("Error moving task between projects: \(error)")
+                print("Error moving task to new project: \(error)")
                 return
             }
         } else {
@@ -443,8 +452,8 @@ public class TaskModel: ObservableObject {
         case .projSelectedDesc:
             // Sort by project order from FilterSidesheet, then by priority, then by task creation time
             sortedTasks.sort { task1, task2 in
-                guard let proj1 = projectModel.getProject(atPath: task1.projectFilePath),
-                      let proj2 = projectModel.getProject(atPath: task2.projectFilePath) else {
+                guard let proj1 = projectModel.getProject(withId: task1.projId),
+                      let proj2 = projectModel.getProject(withId: task2.projId) else {
                     return false
                 }
                 
@@ -465,18 +474,18 @@ public class TaskModel: ObservableObject {
             
         case .projModifiedDesc:
             // Get the last task creation time for each project
-            let projectLastTaskTime: [String: Date] = Dictionary(
+            let projectLastTaskTime: [Int64: Date] = Dictionary(
                 grouping: tasks,
-                by: { $0.projectFilePath }
+                by: { $0.projId }
             ).mapValues { tasks in
                 tasks.map { $0.createTime }.max() ?? Date.distantPast
             }
             
             sortedTasks.sort { task1, task2 in
-                let proj1Time = projectLastTaskTime[task1.projectFilePath] ?? Date.distantPast
-                let proj2Time = projectLastTaskTime[task2.projectFilePath] ?? Date.distantPast
+                let proj1Time = projectLastTaskTime[task1.projId] ?? Date.distantPast
+                let proj2Time = projectLastTaskTime[task2.projId] ?? Date.distantPast
                 
-                if task1.projectFilePath == task2.projectFilePath {
+                if task1.projId == task2.projId {
                     if task1.priority != task2.priority {
                         return task1.priority.isHigherThan(task2.priority)
                     }
@@ -516,7 +525,7 @@ public class TaskModel: ObservableObject {
         
         // Create WidgetTaskItems
         let serializableTasks = widgetTasks.map { task in
-            let iconName = projectModel.getProject(atPath: task.projectFilePath)?.icon ?? "inbox.png"
+            let iconName = projectModel.getProject(withId: task.projId)?.icon ?? "inbox.png"
             return WidgetTaskItem(from: task, iconName: iconName)
         }
         
@@ -635,5 +644,25 @@ public class TaskModel: ObservableObject {
         }
         
         return widgetTasks
+    }
+    
+    public func updateAllTasks(_ newTasks: [TaskItem]) {
+        self.tasks = newTasks
+        self.applySortOrder(TaskSortOrder.shared.currentOrder)
+        
+        // Update widget tasks after loading
+        updateWidgetTasks()
+        
+        // Notify UI of changes
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+        }
+    }
+    
+    public func getProjectName(for task: TaskItem) -> String {
+        if let project = projectModel.getProject(withId: task.projId) {
+            return project.projectName
+        }
+        return "Unknown Project"
     }
 } 

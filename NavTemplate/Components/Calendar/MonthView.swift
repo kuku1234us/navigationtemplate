@@ -4,7 +4,7 @@ import SwiftUI
 
 /// A single month grid. Always 6 rows x 7 columns (Sun–Sat).
 struct MonthView: View {
-    // The first day of the displayed month, e.g. 2023-06-01
+    // The current date that should be circled and also determines the month being displayed
     @Binding var monthDate: Date 
     
     private var weeks: [[Date?]] {
@@ -24,8 +24,22 @@ struct MonthView: View {
                             Text(dayString(from: date))
                                 .frame(maxWidth: .infinity, minHeight: 30)
                                 .foregroundColor(
-                                    isSameMonth(date, as: monthDate) ? .primary : .gray
+                                    isToday(date) ? .black :   // Today's date is black
+                                    Color("MySecondary")       // Other dates are MySecondary
                                 )
+                                .background(
+                                    Circle()
+                                        .fill(
+                                            isToday(date) ? Color("Accent") :              // Today's date gets Accent color
+                                            isSameDate(date, monthDate) ? Color("MySecondary").opacity(0.2) :  // Selected date gets MySecondary
+                                            Color.clear                                     // Other dates get no background
+                                        )
+                                        .frame(width: 24, height: 24)
+                                )
+                                .contentShape(Rectangle())  // Make entire area tappable
+                                .onTapGesture {
+                                    monthDate = date
+                                }
                         } else {
                             Text("")  // blank
                                 .frame(maxWidth: .infinity, minHeight: 30)
@@ -96,5 +110,17 @@ struct MonthView: View {
             }
         }
         return matrix
+    }
+
+    /// Add helper function to check if two dates are the same
+    private func isSameDate(_ date1: Date, _ date2: Date) -> Bool {
+        let cal = Calendar.current
+        return cal.isDate(date1, inSameDayAs: date2)
+    }
+
+    /// Add helper function to check if a date is today
+    private func isToday(_ date: Date) -> Bool {
+        let cal = Calendar.current
+        return cal.isDateInToday(date)
     }
 }

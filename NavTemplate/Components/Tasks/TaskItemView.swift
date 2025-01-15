@@ -190,7 +190,7 @@ struct TaskItemView: View {
                                 .foregroundColor(Color("MySecondary"))
                         }
                         
-                        Text(task.projectName)
+                        Text(taskModel.getProjectName(for: task))
                             .font(.system(size: 14))
                             .foregroundColor(Color("MySecondary"))
                     }

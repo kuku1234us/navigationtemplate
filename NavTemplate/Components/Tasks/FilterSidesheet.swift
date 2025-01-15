@@ -151,6 +151,11 @@ struct FilterSidesheet: View {
     @StateObject private var taskModel = TaskModel.shared
     @StateObject private var projectModel = ProjectModel.shared
     @State private var draggedProject: ProjectMetadata?
+    @State private var isReconciling = false
+    @State private var showReconcileSuccess = false
+    @State private var showReconcileError = false
+    @State private var errorMessage = ""
+    @State private var successValue = 0
     
     private var areAllProjectsSelected: Bool {
         let allProjectIds = Set(projectModel.projects.map { $0.projId })
@@ -165,10 +170,8 @@ struct FilterSidesheet: View {
                 HStack {
                     Button {
                         if areAllProjectsSelected {
-                            // Deselect all
                             projectModel.updateProjectSettings(selectedProjects: [])
                         } else {
-                            // Select all
                             let allProjectIds = Set(projectModel.projects.map { $0.projId })
                             projectModel.updateProjectSettings(selectedProjects: allProjectIds)
                         }
@@ -180,6 +183,10 @@ struct FilterSidesheet: View {
                     .padding(.leading, 12)
                     
                     Spacer()
+                    
+                    // Use new ReconcileButton component
+                    ReconcileButton()
+                        .padding(.trailing, 12)
                 }
                 
                 // Centered title
@@ -200,5 +207,12 @@ struct FilterSidesheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color("SideSheetBg"))
+        .toast(isPresenting: $showReconcileError) {
+            Toast(
+                type: .error,
+                title: "Reconciliation Failed",
+                message: errorMessage.isEmpty ? "Failed to reconcile projects" : errorMessage
+            )
+        }
     }
 } 

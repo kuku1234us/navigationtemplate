@@ -37,7 +37,7 @@ struct MonthCarouselView: View {
         var initialDates: [Date] = []
         for offset in -2...2 { 
             let newDate = cal.date(byAdding: .month, value: offset, to: baseMonth) ?? baseMonth
-            initialDates.append(newDate)
+            initialDates.append(offset == 0 ? currentDate.wrappedValue : newDate)
         }
         
         // Initialize the @State properties
@@ -125,18 +125,31 @@ struct MonthCarouselView: View {
         curIndex = mod ((curIndex + direction), Self.nPanels)
 
         let cal = Calendar.current
-        let newCurrentMonth = monthDates[curIndex]  // Use monthDates instead of panels
+
+        currentDate = monthDates[curIndex]  // Use monthDates instead of panels
 
         var changeIndex = 0
+        var newDate = Date()
+        let today = Date()
 
         if (direction == 1) {
             changeIndex = mod((curIndex+Self.halfPanels), Self.nPanels)
-            let newDate = cal.date(byAdding: .month, value: Self.halfPanels, to: newCurrentMonth) ?? newCurrentMonth
-            monthDates[changeIndex] = newDate
+            newDate = cal.date(byAdding: .month, value: Self.halfPanels, to: firstOfTheMonth(currentDate)) ?? currentDate
+            // Check if newDate is in the current month and today
+            if cal.isDate(newDate, equalTo: today, toGranularity: .month) {
+                monthDates[changeIndex] = today
+            } else {
+                monthDates[changeIndex] = newDate
+            }
         } else {
             changeIndex = mod((curIndex-Self.halfPanels), Self.nPanels)
-            let newDate = cal.date(byAdding: .month, value: -1*Self.halfPanels, to: newCurrentMonth) ?? newCurrentMonth
-            monthDates[changeIndex] = newDate
+            newDate = cal.date(byAdding: .month, value: -1*Self.halfPanels, to: firstOfTheMonth(currentDate)) ?? currentDate
+            // Check if newDate is in the current month and today
+            if cal.isDate(newDate, equalTo: today, toGranularity: .month) {
+                monthDates[changeIndex] = today
+            } else {
+                monthDates[changeIndex] = newDate
+            }
         }
 
         // Reset dragOffset to 0 (center the new position)
