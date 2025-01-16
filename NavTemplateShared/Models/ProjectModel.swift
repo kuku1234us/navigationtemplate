@@ -536,7 +536,7 @@ public class ProjectModel: ObservableObject {
     
     private func getProjectsSummaryURL() throws -> URL {
         guard let vaultURL = ObsidianVaultAccess.shared.vaultURL else {
-            throw ProjectFileError.noVaultAccess
+            throw ObsidianError.noVaultAccess
         }
         
         let summaryURL = vaultURL.appendingPathComponent("Category Notes/Projects/ProjectsSummary.md")

@@ -41,79 +41,6 @@ struct PriorityButton: View {
     }
 }
 
-struct ProjectButton: View {
-    @Binding var selectedProject: ProjectMetadata
-    @StateObject private var projectModel = ProjectModel.shared
-    
-    var body: some View {
-        Menu {
-            ForEach(projectModel.sortedProjects, id: \.projId) { project in
-                Button {
-                    selectedProject = project
-                } label: {
-                    HStack {
-                        if let iconFilename = project.icon {
-                            CachedAsyncImage(
-                                source: .local(iconFilename),
-                                width: 12,
-                                height: 12
-                            )
-                        } else {
-                            Image(systemName: "folder")
-                                .font(.system(size: 12))
-                                .foregroundColor(Color("MySecondary"))
-                        }
-                        
-                        Text(project.projectName)
-                        if project.projId == selectedProject.projId {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
-            HStack {
-                if let iconFilename = selectedProject.icon {
-                    CachedAsyncImage(
-                        source: .local(iconFilename),
-                        width: 12,
-                        height: 12
-                    )
-                } else {
-                    Image(systemName: "folder")
-                        .font(.system(size: 12))
-                }
-                
-                Text(selectedProject.projectName)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 12))
-            }
-            .foregroundColor(Color("MySecondary"))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color("SideSheetBg").opacity(0.5))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-    }
-}
-
-struct SaveButton: View {
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 24))
-                .foregroundColor(Color("Accent"))
-                .background(
-                    Circle()
-                        .fill(Color("SideSheetBg"))
-                        .frame(width: 22, height: 22)
-                )
-        }
-    }
-}
-
 struct TaskEditor: View {
     // For editing existing task
     let existingTask: TaskItem?
@@ -133,22 +60,59 @@ struct TaskEditor: View {
         self._isPresented = isPresented
         
         // Set initial values
-        _text = State(initialValue: task?.name ?? "")
-        _selectedPriority = State(initialValue: task?.priority ?? .normal)
-        
-        // Set initial project (Inbox for new tasks, or existing project)
-        if let task = task,
-           let project = ProjectModel.shared.getProject(withId: task.projId) {
-            _selectedProject = State(initialValue: project)
+        if let task = task {
+            _text = State(initialValue: task.name)
+            _selectedPriority = State(initialValue: task.priority)
+            
+            if let project = ProjectModel.shared.getProject(withId: task.projId) {
+                _selectedProject = State(initialValue: project)
+            } else {
+                _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
+            }
         } else {
-            // Default to Inbox project
             _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
         }
     }
     
+    private func handleSave() {
+        if let existingTask = existingTask {
+            // Update existing task
+            taskModel.updateTask(
+                existingTask,
+                newName: text.trimmingCharacters(in: .whitespacesAndNewlines),
+                newPriority: selectedPriority,
+                newProjId: selectedProject.projId
+            )
+        } else {
+            // Create new task
+            let newTask = TaskItem(
+                id: Int64(Date().timeIntervalSince1970)*1000,
+                name: text.trimmingCharacters(in: .whitespacesAndNewlines),
+                taskStatus: .notStarted,
+                priority: selectedPriority,
+                projId: selectedProject.projId,
+                dueDate: nil,
+                tags: [],
+                createTime: Date()
+            )
+            taskModel.addTask(newTask)
+        }
+        
+        // Force a UI update
+        DispatchQueue.main.async {
+            taskModel.objectWillChange.send()
+        }
+        
+        // Perform haptic feedback
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        
+        // Dismiss the editor
+        isPresented = false
+    }
+    
     var body: some View {
         VStack(spacing: 5) {
-            // Text Editor with placeholder
+            // Title
             ZStack(alignment: .topLeading) {
                 if text.isEmpty {
                     Text("Task Name...")
@@ -181,41 +145,7 @@ struct TaskEditor: View {
                     
                     Spacer()
                     
-                    SaveButton {
-                        if let existingTask = existingTask {
-                            // Update existing task
-                            taskModel.updateTask(
-                                existingTask,
-                                newName: text.trimmingCharacters(in: .whitespacesAndNewlines),
-                                newPriority: selectedPriority,
-                                newProjId: selectedProject.projId
-                            )
-                        } else {
-                            // Create new task
-                            let newTask = TaskItem(
-                                id: Int64(Date().timeIntervalSince1970)*1000,
-                                name: text.trimmingCharacters(in: .whitespacesAndNewlines),
-                                taskStatus: .notStarted,
-                                priority: selectedPriority,
-                                projId: selectedProject.projId,
-                                dueDate: nil,
-                                tags: [],
-                                createTime: Date()
-                            )
-                            taskModel.addTask(newTask)
-                        }
-                        
-                        // Force a UI update
-                        DispatchQueue.main.async {
-                            taskModel.objectWillChange.send()
-                        }
-                        
-                        // Perform haptic feedback
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        
-                        // Dismiss the editor
-                        isPresented = false
-                    }
+                    SaveIconButton(action: handleSave)
                 }
             }
             .padding(.horizontal, 12)

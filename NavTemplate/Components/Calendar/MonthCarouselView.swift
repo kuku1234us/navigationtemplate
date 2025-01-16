@@ -48,7 +48,7 @@ struct MonthCarouselView: View {
     var body: some View {
         GeometryReader { proxy in
             let panelWidth = proxy.size.width
-
+            
             ZStack(alignment: .topLeading) {
                 // Display each of the five panels
                 ForEach(0..<Self.nPanels, id: \.self) { i in
@@ -77,7 +77,7 @@ struct MonthCarouselView: View {
             .onPreferenceChange(MonthHeightPreferenceKey.self) { h in
                 monthViewHeight = h
             }
-            .contentShape(Rectangle()) // So the drag covers the entire area
+            .contentShape(Rectangle())
             .gesture(
                 DragGesture()
                     .onChanged { value in
@@ -108,6 +108,7 @@ struct MonthCarouselView: View {
                     }
             )
         }
+        .frame(height: monthViewHeight) // Constrain GeometryReader height
     }
 
     // MARK: - Panel Offsets

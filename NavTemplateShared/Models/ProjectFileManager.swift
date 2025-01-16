@@ -10,11 +10,11 @@ internal class ProjectFileManager {
     // Returns all markdown files without checking their content
     func findAllMarkdownFiles() throws -> [URL] {
         guard let vault = ObsidianVaultAccess.shared.vaultURL else {
-            throw ProjectFileError.noVaultAccess
+            throw ObsidianError.noVaultAccess
         }
         
         guard vault.startAccessingSecurityScopedResource() else {
-            throw ProjectFileError.noVaultAccess
+            throw ObsidianError.noVaultAccess
         }
         defer { vault.stopAccessingSecurityScopedResource() }
         

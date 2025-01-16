@@ -24,3 +24,10 @@
 | E013  | Invalid frontmatter format | `ProjectModel.validateFrontmatter(_:)` |
 | E014  | Missing required frontmatter fields | `ProjectModel.checkRequiredFields(_:)` |
 
+## Calendar Errors (E015-E02x)
+
+| Code  | Description | Context (Method) |
+|-------|-------------|-----------------|
+| E015  | Failed to access vault while loading calendar events | `CalendarModel.loadEventsForYear(_:)` |
+| E016  | Failed to load events for specified year | `CalendarModel.loadEventsForYear(_:)` |
+

@@ -88,7 +88,7 @@ struct TasksPage: Page {
                     .padding(.top)
                 }
                 
-                AddTaskButton(onTap: handleNewTask)
+                AddItemButton(onTap: handleNewTask)
 
                 // Sort Menu Overlay
                 if showSortMenu {

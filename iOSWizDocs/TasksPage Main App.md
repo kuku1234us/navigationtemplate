@@ -17,7 +17,7 @@ The Tasks Page is the primary interface in the iOSWiz Main App for Task Manageme
 
 ### Quick Add Button
 
-- **AddTaskButton**: A floating button at the bottom right corner of the page.
+- **AddItemButton**: A floating button at the bottom Center of the page.
 - **Functionality**: Tapping the button opens a task creation interface, allowing users to quickly add new tasks.
 
 ### FilterSidesheet

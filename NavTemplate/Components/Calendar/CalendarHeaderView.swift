@@ -11,7 +11,7 @@ struct CalendarHeaderView: View {
     var body: some View {
         VStack(spacing: 8) {
             // Top row of header
-            HStack {
+            HStack(spacing: 12) {
                 // Year
                 Button(action: {
                     // Year selection action
@@ -27,7 +27,7 @@ struct CalendarHeaderView: View {
 
                 // Search field
                 TaskSearchField(text: $searchText)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 0)
             }
 
             // Middle row of header
