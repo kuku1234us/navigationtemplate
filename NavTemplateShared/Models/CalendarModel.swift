@@ -1,3 +1,5 @@
+// ./NavTemplateShared/Models/CalendarModel.swift
+
 import Foundation
 
 // Add Date extension for formatting
@@ -147,14 +149,26 @@ public class CalendarModel: ObservableObject {
             let fileContent = try String(contentsOf: fileURL, encoding: .utf8)
             let lines = fileContent.components(separatedBy: .newlines)
             
-            // Use a dictionary to keep only the latest version of each event
             var latestEvents: [Int64: CalendarEvent] = [:]
+            var deletedEventIds = Set<Int64>()
             
-            // Process each line, keeping only the latest version of each event
+            // Process each line
             for line in lines where !line.isEmpty {
-                if let data = line.data(using: .utf8),
-                   let event = try? JSONDecoder().decode(CalendarEvent.self, from: data) {
-                    latestEvents[event.eventId] = event  // Later duplicates will override earlier ones
+                if let data = line.data(using: .utf8) {
+                    // Try parsing as delete marker
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let action = json["action"] as? String,
+                       action == "delete",
+                       let eventId = json["eventId"] as? Int64 {
+                        deletedEventIds.insert(eventId)
+                        latestEvents.removeValue(forKey: eventId)
+                    }
+                    // Try parsing as event
+                    else if let event = try? JSONDecoder().decode(CalendarEvent.self, from: data) {
+                        if !deletedEventIds.contains(event.eventId) {
+                            latestEvents[event.eventId] = event
+                        }
+                    }
                 }
             }
             
@@ -262,12 +276,25 @@ public class CalendarModel: ObservableObject {
         let content = try String(contentsOf: fileURL, encoding: .utf8)
         let lines = content.components(separatedBy: .newlines)
         
-        var eventMap: [Int64: String] = [:] // eventId -> JSON string
+        var eventMap: [Int64: String] = [:]  // eventId -> JSON string
+        var deletedEventIds = Set<Int64>()   // Track deleted events
         
         for line in lines where !line.isEmpty {
-            if let data = line.data(using: .utf8),
-               let event = try? JSONDecoder().decode(CalendarEvent.self, from: data) {
-                eventMap[event.eventId] = line
+            if let data = line.data(using: .utf8) {
+                // Check for delete markers
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let action = json["action"] as? String,
+                   action == "delete",
+                   let eventId = json["eventId"] as? Int64 {
+                    deletedEventIds.insert(eventId)
+                    eventMap.removeValue(forKey: eventId)
+                }
+                // Check for events
+                else if let event = try? JSONDecoder().decode(CalendarEvent.self, from: data) {
+                    if !deletedEventIds.contains(event.eventId) {
+                        eventMap[event.eventId] = line
+                    }
+                }
             }
         }
         
@@ -317,5 +344,66 @@ public class CalendarModel: ObservableObject {
     public func getEventsForYear(_ year: Int) -> [CalendarEvent] {
         let events = eventsByYear[year] ?? []
         return events
+    }
+    
+    public enum CalendarError: Error {
+        case invalidPath
+        case fileOperationFailed
+        case reconciliationFailed
+        case vaultNotFound
+    }
+    
+    @MainActor
+    public func deleteEvent(withId eventId: Int64) async throws {
+        // Get the year from the event we're deleting
+        var affectedYear: Int?
+        for (year, events) in eventsByYear {
+            if events.contains(where: { $0.eventId == eventId }) {
+                affectedYear = year
+                break
+            }
+        }
+        
+        guard let year = affectedYear,
+              let vault = ObsidianVaultAccess.shared.vaultURL else {
+            throw CalendarError.vaultNotFound
+        }
+        
+        let filePath = getCalendarFilePath(for: year)
+        let fileURL = vault.appendingPathComponent(filePath)
+        
+        // Create and append delete marker
+        let deleteMarker: [String: Any] = ["eventId": eventId, "action": "delete"]
+        do {
+            let deleteJSON = try JSONSerialization.data(withJSONObject: deleteMarker)
+            
+            let fileHandle = try FileHandle(forWritingTo: fileURL)
+            defer { fileHandle.closeFile() }
+            fileHandle.seekToEndOfFile()
+            fileHandle.write(deleteJSON)
+            fileHandle.write("\n".data(using: .utf8)!)
+            
+            // Update counter and check for reconciliation
+            let updateCount = UserDefaults.standard.integer(forKey: "CalendarUpdateCount") + 1
+            UserDefaults.standard.set(updateCount, forKey: "CalendarUpdateCount")
+            
+            if updateCount >= 100 {
+                try await reconcileFile(for: year)
+                UserDefaults.standard.set(0, forKey: "CalendarUpdateCount")
+                await loadEventsForYear(year)  // Reload after reconciliation
+            } else {
+                // Update in-memory state immediately
+                if var events = eventsByYear[year] {
+                    events.removeAll { $0.eventId == eventId }
+                    eventsByYear[year] = events
+                }
+            }
+            
+            objectWillChange.send()
+            
+        } catch {
+            Logger.shared.error("[E023] Failed to delete event: \(error)")
+            throw CalendarError.fileOperationFailed
+        }
     }
 } 

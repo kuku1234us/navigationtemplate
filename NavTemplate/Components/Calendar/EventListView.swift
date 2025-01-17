@@ -19,29 +19,17 @@ struct EventListView: View {
     }
     
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 8) {
-                if events.isEmpty {
-                    Text("No events")
-                        .foregroundColor(Color("MyTertiary"))
-                        .padding()
-                } else {
-                    ForEach(events, id: \.eventId) { event in
-                        EventItemView(event: event, onEventTap: onEventTap)
-                            .id("\(event.eventId)-\(event.projId ?? 0)")
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    deleteEvent(event)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                .tint(.red)
-                            }
-                    }
+        if events.isEmpty {
+            Text("No events")
+                .foregroundColor(Color("MyTertiary"))
+                .padding()
+        } else {
+            ScrollView {
+                ForEach(events, id: \.eventId) { event in
+                    EventItemView(event: event, onEventTap: onEventTap)
                 }
+                .padding(.bottom, NavigationState.bottomMenuHeight + 20)
             }
-            .padding(.horizontal, 0)
-            .padding(.bottom, NavigationState.bottomMenuHeight + 20)
         }
     }
 } 
