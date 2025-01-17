@@ -21,28 +21,17 @@ struct MonthView: View {
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { col in
                         if let date = weeks[row][col] {
-                            Text(dayString(from: date))
-                                .frame(maxWidth: .infinity, minHeight: 30)
-                                .foregroundColor(
-                                    isToday(date) ? .black :   // Today's date is black
-                                    Color("MySecondary")       // Other dates are MySecondary
-                                )
-                                .background(
-                                    Circle()
-                                        .fill(
-                                            isToday(date) ? Color("Accent") :              // Today's date gets Accent color
-                                            isSameDate(date, monthDate) ? Color("MySecondary").opacity(0.2) :  // Selected date gets MySecondary
-                                            Color.clear                                     // Other dates get no background
-                                        )
-                                        .frame(width: 24, height: 24)
-                                )
-                                .contentShape(Rectangle())  // Make entire area tappable
-                                .onTapGesture {
-                                    monthDate = date
+                            DayCell(
+                                date: date,
+                                monthDate: monthDate,
+                                hasEvents: false, // TODO: Add hasEvents parameter
+                                onDateTap: { tappedDate in
+                                    monthDate = tappedDate
                                 }
+                            )
                         } else {
-                            Text("")  // blank
-                                .frame(maxWidth: .infinity, minHeight: 30)
+                            Color.clear
+                                .frame(maxWidth: .infinity, minHeight: 30)  // Match cell spacing
                         }
                     }
                 }
@@ -122,5 +111,36 @@ struct MonthView: View {
     private func isToday(_ date: Date) -> Bool {
         let cal = Calendar.current
         return cal.isDateInToday(date)
+    }
+}
+
+private struct DayCell: View {
+    let date: Date
+    let monthDate: Date  // This is both the selected date and reference month
+    let hasEvents: Bool
+    let onDateTap: (Date) -> Void
+    
+    var body: some View {
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(date)
+        let isSelected = calendar.isDate(date, inSameDayAs: monthDate)
+        
+        Text("\(calendar.component(.day, from: date))")
+            .font(.system(size: 14, weight: isToday ? .black : .regular))
+            .foregroundColor(
+                isSelected ? (isToday ? .black : Color("MySecondary")) : (isToday ? .blue : Color("MySecondary"))
+            )
+            .frame(maxWidth: .infinity, minHeight: 30)
+            .background(
+                Circle()
+                    .fill(
+                        isSelected ? (isToday ? Color("Accent") : Color("MySecondary").opacity(0.2)) : Color.clear
+                    )
+                    .frame(width: 24, height: 24)
+            )
+            .contentShape(Rectangle())  // Make entire area tappable
+            .onTapGesture {
+                onDateTap(date)
+            }
     }
 }
