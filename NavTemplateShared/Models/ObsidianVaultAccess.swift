@@ -14,7 +14,7 @@ public class ObsidianVaultAccess {
     private init() {
         // Initialize with any stored bookmark
         if let url = vaultURL {
-            print("ObsidianVaultAccess: Found existing vault bookmark at \(url.path)")
+            // print("ObsidianVaultAccess: Found existing vault bookmark at \(url.path)")
         }
     }
     
@@ -55,6 +55,12 @@ public class ObsidianVaultAccess {
         }
     }
     
+    // New method that maintains consistency with existing code
+    public func saveVaultBookmark(_ bookmarkData: Data) {
+        groupDefaults?.set(bookmarkData, forKey: bookmarkKey)
+        print("ObsidianVaultAccess: Directly saved vault bookmark data")
+    }
+    
     private func saveBookmark(for url: URL) throws {
         let bookmarkData = try url.bookmarkData(
             options: .minimalBookmark,
@@ -62,5 +68,11 @@ public class ObsidianVaultAccess {
             relativeTo: nil
         )
         groupDefaults?.set(bookmarkData, forKey: bookmarkKey)
+    }
+    
+    // Add method to clear vault access
+    public func clearVaultAccess() {
+        groupDefaults?.removeObject(forKey: bookmarkKey)
+        print("ObsidianVaultAccess: Cleared vault bookmark")
     }
 } 
