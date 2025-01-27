@@ -16,7 +16,7 @@ struct ViewWithBottomMenu: View {
             ZStack {
                 items[selectedIndex].targetView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .animation(.easeInOut(duration: 0.1), value: selectedIndex)
+                    // .animation(.easeInOut(duration: 0.3), value: selectedIndex)
                 
                 // Bottom menu
                 VStack {

@@ -1,43 +1,64 @@
 import SwiftUI
 
 struct MaintenanceHeaderView: View {
-    @Binding var showClearConfirmation: Bool
+    @Binding var selectedTab: MaintenanceTab
     
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text("Maintenance")
                     .font(.largeTitle)
                     .fontWeight(.black)
                     .foregroundColor(Color("PageTitle"))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                
-                Button(action: {
-                    showClearConfirmation = true
-                }) {
-                    Image(systemName: "trash")
-                        .foregroundColor(Color("MyTertiary"))
+                    
+                Spacer()
+
+                // Menu bar
+                HStack(spacing: 0) {
+                    IconButton(
+                        selectedIcon: "exclamationmark.triangle.fill",
+                        unselectedIcon: "exclamationmark.triangle",
+                        isSelected: .init(
+                            get: { selectedTab == .logs },
+                            set: { _ in selectedTab = .logs }
+                        ),
+                        frameSize: 30,
+                        action: { selectedTab = .logs }
+                    )
+                    
+                    IconButton(
+                        selectedIcon: "folder.fill",
+                        unselectedIcon: "folder",
+                        isSelected: .init(
+                            get: { selectedTab == .vault },
+                            set: { _ in selectedTab = .vault }
+                        ),
+                        frameSize: 30,
+                        action: { selectedTab = .vault }
+                    )
+                    IconButton(
+                        selectedIcon: "testtube.2",
+                        unselectedIcon: "testtube.2",
+                        isSelected: .init(
+                            get: { selectedTab == .test2 },
+                            set: { _ in selectedTab = .test2 }
+                        ),
+                        frameSize: 30,
+                        action: { selectedTab = .test2 }
+                    )
                 }
+
+
             }
         }
-        .withSafeAreaTop()
         .padding()
-        .backgroundBlur(radius: 10, opaque: true)
-        .background(
-            MeshGradient(
-                width: 3, height: 3,
-                points: [
-                    [0.0,0.0], [0.5,0.0], [1.0,0.0],
-                    [0.0,0.5], [0.5,0.5], [1.0,0.5],
-                    [0.0,1.0], [0.5,1.0], [1.0,1.0]
-                ],
-                colors: [
-                    Color("Background"),Color("Background"),.black,
-                    .blue,Color("Background"),Color("Background"),
-                    .blue,.blue,Color("Background"),                    
-                ]
-            )
-            .opacity(0.1)
-        )
+        .headerStyle()
     }
+}
+
+// Add enum for tab selection
+enum MaintenanceTab {
+    case logs
+    case vault
+    case test2
 } 

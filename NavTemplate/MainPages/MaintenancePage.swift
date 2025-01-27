@@ -3,8 +3,8 @@ import NavTemplateShared
 
 struct MaintenancePage: View {
     var navigationManager: NavigationManager?
-    @State private var showClearConfirmation = false
     @StateObject private var logManager = LogManager.shared
+    @State private var selectedTab: MaintenanceTab = .logs
     
     var body: some View {
         ZStack {
@@ -15,20 +15,19 @@ struct MaintenancePage: View {
                 .overlay(.black.opacity(0.5))
             
             VStack(spacing: 0) {
-                // Header
-                MaintenanceHeaderView(showClearConfirmation: $showClearConfirmation)
+                // Header with menu bar
+                MaintenanceHeaderView(selectedTab: $selectedTab)
                 
-                // Log List
-                LogListView()
+                // Content based on selected tab
+                if selectedTab == .logs {
+                    LogListView()
+                } else if selectedTab == .vault {
+                    iCloudPage()
+                } else if selectedTab == .test2 {
+                    Test2()
+                }
+                Spacer()
             }
-        }
-        .alert("Clear Logs", isPresented: $showClearConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Clear", role: .destructive) {
-                logManager.clearLogs()
-            }
-        } message: {
-            Text("Are you sure you want to clear all logs?")
         }
     }
 } 

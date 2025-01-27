@@ -23,6 +23,8 @@
 | E012  | Failed to find closing frontmatter marker | `ProjectModel.parseProjectMetadata(from:)` |
 | E013  | Invalid frontmatter format | `ProjectModel.validateFrontmatter(_:)` |
 | E014  | Missing required frontmatter fields | `ProjectModel.checkRequiredFields(_:)` |
+| E026  | Failed to write updated frontmatter to file | `ProjectFileManager.updateFrontmatterField(_:field:value:fileURL:)` |
+| E027  | Invalid frontmatter boundaries | `ProjectFileManager.updateFrontmatterField(_:field:value:fileURL:)` |
 
 ## Calendar Errors
 

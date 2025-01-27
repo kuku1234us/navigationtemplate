@@ -55,7 +55,21 @@ public extension Color {
     )
 }
 
+// MARK: - View Extensions
+
 public extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+    
+    func withSafeAreaTop() -> some View {
+        self.padding(.top, getSafeAreaTop())
+    }
+    
+    func withSafeAreaBottom() -> some View {
+        self.padding(.bottom, getSafeAreaBottom())
+    }
+    
     func innerShadow<S: Shape, SS: ShapeStyle>(
         shape: S,
         color: SS,
@@ -75,23 +89,6 @@ public extension View {
                 .mask(shape)
                 .opacity(opacity)
         )
-    }
-}
-
-public struct SafeAreaTop: View {
-    public init() {}
-    
-    public var body: some View {
-        return GeometryReader { geometry in
-            Color.clear
-                .frame(height: UIApplication.shared.keyWindow?.safeAreaInsets.top ?? 0)
-        }
-    }
-}
-
-public extension View {
-    func withSafeAreaTop() -> some View {
-        return self.padding(.top, UIApplication.shared.keyWindow?.safeAreaInsets.top ?? 0)
     }
     
     func withTransparentCardStyle() -> some View {
@@ -139,9 +136,26 @@ public extension View {
             .shadow(radius: 10)
     }
 
-
-
-
+    func topBottomBorders(width: CGFloat = 0.5, opacity: Double = 1) -> some View {
+        self.border(
+            MeshGradient(
+                width: 3, height: 3,
+                points: [
+                    [0.0,0.0], [0.5,0.0], [1.0,0.0],
+                    [0.0,0.5], [0.5,0.5], [1.0,0.5],
+                    [0.0,1.0], [0.5,1.0], [1.0,1.0]
+                ],
+                colors: [
+                    Color(.black).opacity(0), Color(.white), .black.opacity(0),
+                    Color(.black).opacity(0), .black.opacity(0), .black.opacity(0),
+                    Color(.black).opacity(0), Color(.white), .black.opacity(0)
+                ]
+            )
+            .opacity(opacity),
+        
+            width: width
+        )
+    }
 }
 
 extension UIApplication {
@@ -151,4 +165,74 @@ extension UIApplication {
             .flatMap { $0.windows }
             .first { $0.isKeyWindow }
     }
+}
+
+// MARK: - Geometry Utilities
+
+/// A utility function to compute the transformation values (offsetX, offsetY, scaleX) between two CGRects.
+public func computeTransform(from rect1: CGRect, to rect2: CGRect) -> (offsetX: CGFloat, offsetY: CGFloat, scaleX: CGFloat) {
+    // Compute the scale factor (based on widths of rect1 and rect2)
+    let scaleX = rect2.width / rect1.width
+    
+    // Compute the X and Y offsets
+    let offsetX = rect2.midX - rect1.midX
+    let offsetY = rect2.midY - rect1.midY
+    
+    return (offsetX, offsetY, scaleX)
+}
+
+/// Computes the X scale factor between two CGRects based on their widths.
+public func computeScaleX(from rect1: CGRect, to rect2: CGRect) -> CGFloat {
+    if rect1.width == 0 {
+        return 1 
+    }
+    return rect2.width / rect1.width
+}
+
+/// Computes the Y scale factor between two CGRects based on their heights.
+public func computeScaleY(from rect1: CGRect, to rect2: CGRect) -> CGFloat {
+    if rect1.height == 0 {
+        return 1 
+    }
+    return rect2.height / rect1.height
+}
+
+/// Computes the horizontal offset needed to align the centers of two CGRects.
+public func computeOffsetX(from rect1: CGRect, to rect2: CGRect) -> CGFloat {
+    if rect1.width == 0 {
+        return 0
+    }
+    let scale = rect2.width / rect1.width
+    let deltaX = (rect1.width * (1 - scale)) / 2
+    return rect2.minX - rect1.minX - deltaX
+}
+
+/// Computes the vertical offset needed to align the centers of two CGRects.
+public func computeOffsetY(from rect1: CGRect, to rect2: CGRect) -> CGFloat {
+    if rect1.height == 0 {
+        return 0
+    }
+    let scale = rect2.height / rect1.height
+    let deltaY = (rect1.height * (1 - scale)) / 2
+    return rect2.minY - rect1.minY - deltaY
+}
+
+// MARK: - Private Helper Functions
+
+private func getSafeAreaTop() -> CGFloat {
+    let scenes = UIApplication.shared.connectedScenes
+    let windowScene = scenes.first as? UIWindowScene
+    return windowScene?.windows.first?.safeAreaInsets.top ?? 0
+}
+
+private func getSafeAreaBottom() -> CGFloat {
+    let scenes = UIApplication.shared.connectedScenes
+    let windowScene = scenes.first as? UIWindowScene
+    return windowScene?.windows.first?.safeAreaInsets.bottom ?? 0
+}
+
+private func getKeyWindow() -> UIWindow? {
+    let scenes = UIApplication.shared.connectedScenes
+    let windowScene = scenes.first as? UIWindowScene
+    return windowScene?.windows.first { $0.isKeyWindow }
 }

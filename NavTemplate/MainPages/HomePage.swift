@@ -44,6 +44,15 @@ struct HomePage: Page {
         AnyView(
             ViewWithBottomMenu(items: [
                 MenuBarItem(
+                    unselectedIcon: "wrench.and.screwdriver",
+                    selectedIcon: "wrench.and.screwdriver.fill",
+                    targetView: AnyView(
+                        MaintenancePage(
+                            navigationManager: navigationManager
+                        )
+                    )
+                ),
+                MenuBarItem(
                     unselectedIcon: "checklist",
                     selectedIcon: "checklist.checked",
                     targetView: AnyView(
@@ -71,26 +80,20 @@ struct HomePage: Page {
                     )
                 ),
                 MenuBarItem(
-                    unselectedIcon: "testtube.2",
-                    selectedIcon: "testtube.2",
-                    targetView: AnyView(TestPage())
-                ),
-                MenuBarItem(
-                    unselectedIcon: "wrench.and.screwdriver",
-                    selectedIcon: "wrench.and.screwdriver.fill",
+                    unselectedIcon: "square.grid.3x3",
+                    selectedIcon: "square.grid.3x3.fill",
                     targetView: AnyView(
-                        MaintenancePage(
+                        YearPage(
                             navigationManager: navigationManager
                         )
                     )
                 ),
                 MenuBarItem(
-                    unselectedIcon: "folder",
-                    selectedIcon: "folder.fill",
-                    targetView: AnyView(
-                        iCloudPage()
-                    )
+                    unselectedIcon: "testtube.2",
+                    selectedIcon: "testtube.2",
+                    targetView: AnyView(TestPage())
                 )
+             
             ])
             .onDisappear {
                 // print(">>>>> HomePage cleanup")

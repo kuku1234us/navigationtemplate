@@ -1,14 +1,24 @@
 // MonthView.swift
 
 import SwiftUI
+import NavTemplateShared
+
+// Bundle date and hasEvents together
+private struct DayCellData {
+    let date: Date
+    let hasEvents: Bool
+}
 
 /// A single month grid. Always 6 rows x 7 columns (Sun–Sat).
 struct MonthView: View {
     // The current date that should be circled and also determines the month being displayed
     @Binding var monthDate: Date 
+    @Binding var eventDisplayLevel: EventDisplayLevel
+    @Binding var currentDate: Date
+    @StateObject private var calendarModel = CalendarModel.shared
     
-    private var weeks: [[Date?]] {
-        // Generate a 6 x 7 matrix of dates (some may be nil if they fall outside the displayed month).
+    private var weeks: [[DayCellData?]] {
+        // Generate a 6 x 7 matrix of DayCellData (some may be nil if they fall outside the displayed month).
         generateWeeks(for: monthDate)
     }
 
@@ -20,13 +30,14 @@ struct MonthView: View {
             ForEach(0..<6, id: \.self) { row in
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { col in
-                        if let date = weeks[row][col] {
+                        if let cellData = weeks[row][col] {
                             DayCell(
-                                date: date,
+                                cellData: cellData,
                                 monthDate: monthDate,
-                                hasEvents: false, // TODO: Add hasEvents parameter
                                 onDateTap: { tappedDate in
                                     monthDate = tappedDate
+                                    currentDate = tappedDate
+                                    eventDisplayLevel = .bySelection
                                 }
                             )
                         } else {
@@ -68,29 +79,31 @@ struct MonthView: View {
             && cal.component(.year, from: date) == cal.component(.year, from: reference)
     }
 
-    /// Build a 6x7 matrix of Date? for the given month.
-    private func generateWeeks(for monthDate: Date) -> [[Date?]] {
-        var matrix = Array(repeating: Array(repeating: Date?.none, count: 7), count: 6)
-
+    /// Build a 6x7 matrix of DayCellData? for the given month.
+    private func generateWeeks(for monthDate: Date) -> [[DayCellData?]] {
+        var matrix = Array(repeating: Array(repeating: DayCellData?.none, count: 7), count: 6)
+        
         let cal = Calendar.current
-
-        // 1) First day of this month, e.g. "2023-06-01 00:00"
+        
+        // 1) First day of this month
         let comps = cal.dateComponents([.year, .month], from: monthDate)
         guard let firstOfMonth = cal.date(from: comps) else { return matrix }
-
+        
         let range = cal.range(of: .day, in: .month, for: firstOfMonth) ?? 1..<1
         let daysInMonth = range.count
-
-        // 2) The weekday of the first day (Sun=1 ... Sat=7 in many locales)
-        let firstWeekday = cal.component(.weekday, from: firstOfMonth)  // e.g. "5" if Thu
-        // We want Sunday=0..Saturday=6 in our code => shift by 1
+        
+        let firstWeekday = cal.component(.weekday, from: firstOfMonth)
         let firstIndex = (firstWeekday - 1) % 7
-
+        
         var row = 0, col = firstIndex
-        // 3) Fill in each day
         for day in 1...daysInMonth {
             let dayDate = cal.date(byAdding: .day, value: day-1, to: firstOfMonth)!
-            matrix[row][col] = dayDate
+            
+            // Check for events on this day
+            let hasEvents = !calendarModel.getEventsForDay(date: dayDate).isEmpty
+            
+            matrix[row][col] = DayCellData(date: dayDate, hasEvents: hasEvents)
+            
             col += 1
             if col > 6 {
                 col = 0
@@ -115,32 +128,43 @@ struct MonthView: View {
 }
 
 private struct DayCell: View {
-    let date: Date
-    let monthDate: Date  // This is both the selected date and reference month
-    let hasEvents: Bool
+    let cellData: DayCellData
+    let monthDate: Date
     let onDateTap: (Date) -> Void
     
     var body: some View {
         let calendar = Calendar.current
-        let isToday = calendar.isDateInToday(date)
-        let isSelected = calendar.isDate(date, inSameDayAs: monthDate)
+        let isToday = calendar.isDateInToday(cellData.date)
+        let isSelected = calendar.isDate(cellData.date, inSameDayAs: monthDate)
         
-        Text("\(calendar.component(.day, from: date))")
-            .font(.system(size: 14, weight: isToday ? .black : .regular))
-            .foregroundColor(
-                isSelected ? (isToday ? .black : Color("MySecondary")) : (isToday ? .blue : Color("MySecondary"))
-            )
-            .frame(maxWidth: .infinity, minHeight: 30)
-            .background(
+        ZStack {
+            // Background circle
+            Circle()
+                .fill(
+                    isSelected ? (isToday ? Color("PageTitle") : Color("Accent")) : Color.clear
+                )
+                .frame(width: 24, height: 24)
+            
+            // Date text centered in cell
+            Text("\(calendar.component(.day, from: cellData.date))")
+                .font(.system(size: 14, weight: isToday ? .black : (cellData.hasEvents ? .bold : .regular)))
+                .foregroundColor(
+                    isSelected ? (isToday ? .black : .black) : (isToday ? Color("PageTitle") : (cellData.hasEvents ? Color("MyPrimary") : Color("MyTertiary")))
+                )
+            
+            // Event indicator dot at bottom
+            if cellData.hasEvents {
                 Circle()
-                    .fill(
-                        isSelected ? (isToday ? Color("Accent") : Color("MySecondary").opacity(0.2)) : Color.clear
-                    )
-                    .frame(width: 24, height: 24)
-            )
-            .contentShape(Rectangle())  // Make entire area tappable
-            .onTapGesture {
-                onDateTap(date)
+                    .fill(Color("MyPrimary"))
+                    .frame(width: 6, height: 6)
+                    .offset(y: 18)  // Position below the date
             }
+        }
+        .frame(maxWidth: .infinity, minHeight: 35)
+        .contentShape(Rectangle())
+        .border(.green, width: 1)
+        .onTapGesture {
+            onDateTap(cellData.date)
+        }
     }
 }

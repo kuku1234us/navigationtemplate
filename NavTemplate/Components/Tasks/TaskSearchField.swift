@@ -46,6 +46,5 @@ struct TaskSearchField: View {
             Capsule()
                 .stroke(Color("MyTertiary").opacity(0.2), lineWidth: 1)
         )
-        // .innerShadow(shape: Capsule(), color: Color.bottomSheetBorderMiddle , lineWidth: 1, offsetX: 0, offsetY: 1, blur: 0, blendMode: .overlay, opacity: 1)
     }
 } 

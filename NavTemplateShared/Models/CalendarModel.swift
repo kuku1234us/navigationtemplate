@@ -45,7 +45,7 @@ public enum CalendarType: String, CaseIterable {
         case .month:
             return "calendar.circle.fill"
         case .year:
-            return "calendar.badge.exclamationmark.fill"
+            return "calendar.badge.exclamationmark"
         }
     }
 } 
@@ -406,4 +406,9 @@ public class CalendarModel: ObservableObject {
             throw CalendarError.fileOperationFailed
         }
     }
+}
+
+public enum EventDisplayLevel {
+    case byHeader    // Show events for the month shown in header
+    case bySelection // Show events for the selected day
 } 

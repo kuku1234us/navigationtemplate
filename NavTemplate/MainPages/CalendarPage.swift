@@ -2,11 +2,15 @@ import SwiftUI
 import NavTemplateShared
 
 struct CalendarPage: Page {
+    // TODO: Replace these placeholders with incoming variables from parent view
     var navigationManager: NavigationManager?
+    @State private var ghostMonthShortTitleRect : CGRect = .zero
+    @State private var ghostMonthLongTitleRect: CGRect = .zero
+    @State private var ghostWeekdayRect: CGRect = .zero
+    @State var ghostMiniMonthRects: [MiniMonthRect] = []
     
     @StateObject private var calendarModel = CalendarModel.shared
     @State private var searchText = ""
-    @State private var headerFrame: CGRect = .zero
     @State private var isLoading = true
     @State private var showEventEditor = false
     @State private var eventToEdit: CalendarEvent?
@@ -17,13 +21,18 @@ struct CalendarPage: Page {
     
     // Events state
     @State private var displayedEvents: [CalendarEvent] = []
+    @State private var eventDisplayLevel: EventDisplayLevel = .byHeader
+    
+    // Add arrays for month title rects
+    @State private var ghostMonthShortTitleRects: [CGRect] = Array(repeating: .zero, count: 12)
+    @State private var ghostMonthLongTitleRects: [CGRect] = Array(repeating: .zero, count: 12)
     
     var widgets: [AnyWidget] {
         return []
     }
     
     private func updateDisplayedEvents() {
-        let events: [CalendarEvent]
+        var events: [CalendarEvent]
         switch calendarType {
         case .day:
             events = calendarModel.getEventsForDay(date: curDate)
@@ -36,6 +45,10 @@ struct CalendarPage: Page {
             events = calendarModel.getEventsForYear(year)
         }
         
+        if eventDisplayLevel == .bySelection {
+            events = calendarModel.getEventsForDay(date: curDate)
+        }
+        
         // Apply search filter if needed
         if !searchText.isEmpty {
             displayedEvents = events.filter { event in
@@ -46,6 +59,9 @@ struct CalendarPage: Page {
         } else {
             displayedEvents = events
         }
+        
+        // Explicitly trigger UI update
+        calendarModel.objectWillChange.send()
     }
     
     private func handleNewEvent() {
@@ -71,22 +87,19 @@ struct CalendarPage: Page {
                     CalendarHeaderView(
                         searchText: $searchText,
                         curDate: $curDate,
-                        calendarType: $calendarType
-                    )
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear
-                                .onAppear {
-                                    DispatchQueue.main.async {
-                                        self.headerFrame = geo.frame(in: .global)
-                                    }
-                                }
-                        }
+                        calendarType: $calendarType,
+                        eventDisplayLevel: $eventDisplayLevel,
+                        ghostMonthShortTitleRects: ghostMonthShortTitleRects,
+                        ghostMonthLongTitleRects: ghostMonthLongTitleRects,
+                        ghostWeekdayRect: $ghostWeekdayRect,
+                        ghostMiniMonthRects: ghostMiniMonthRects
                     )
                     
                     // Month view
-                    MonthCarouselView(currentDate: $curDate)
-                        .padding(.horizontal, 12)
+                    MonthCarouselView(
+                        currentDate: $curDate,
+                        eventDisplayLevel: $eventDisplayLevel
+                    )
                     
                     if isLoading {
                         ProgressView()
@@ -97,6 +110,7 @@ struct CalendarPage: Page {
                             handleEventTap(event)
                         }
                     }
+                    // Spacer()
                 }
                 .ignoresSafeArea(.keyboard)
                 
@@ -139,6 +153,9 @@ struct CalendarPage: Page {
                 updateDisplayedEvents()
             }
             .onChange(of: calendarModel.eventsByYear) { _ in
+                updateDisplayedEvents()
+            }
+            .onChange(of: eventDisplayLevel) { _ in
                 updateDisplayedEvents()
             }
         )

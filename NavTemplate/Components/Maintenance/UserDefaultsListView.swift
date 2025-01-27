@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct TestPage: View {
+struct UserDefaultsListView: View {
     @State private var userDefaultsKeys: [String] = []
     
     private func deleteKey(_ key: String) {
@@ -46,5 +46,4 @@ struct TestPage: View {
             }
         }
     }
-}
-
+} 

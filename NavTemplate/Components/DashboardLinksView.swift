@@ -25,12 +25,6 @@ struct DashboardLinksView {
                     )
                     navigationManager?.navigate(to: AnyPage(dailyPage))
                 }
-                Button("Go to iCloud Explorer") {
-                    let iCloudPage = iCloudPage(
-                        navigationManager: navigationManager
-                    )
-                    navigationManager?.navigate(to: AnyPage(iCloudPage))
-                }
                 Button("Browse Files") {
                     let fileBrowserPage = FileBrowserPage(
                         navigationManager: navigationManager

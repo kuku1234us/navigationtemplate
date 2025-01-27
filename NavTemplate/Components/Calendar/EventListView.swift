@@ -20,9 +20,20 @@ struct EventListView: View {
     
     var body: some View {
         if events.isEmpty {
-            Text("No events")
-                .foregroundColor(Color("MyTertiary"))
-                .padding()
+            VStack {
+                Spacer()
+                ZStack{
+
+                    Text("No events")
+                        .font(.system(size: 40))
+                        .fontWeight(.black)
+                        .foregroundColor(Color("MyTertiary").opacity(0.3))
+                        .padding()
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.bottom, NavigationState.bottomMenuHeight + 100)
         } else {
             ScrollView {
                 ForEach(events, id: \.eventId) { event in

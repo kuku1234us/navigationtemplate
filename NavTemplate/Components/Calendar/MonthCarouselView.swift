@@ -1,9 +1,11 @@
 // MonthCarouselView.swift
 
 import SwiftUI
+import NavTemplateShared
 
 struct MonthCarouselView: View {
     @Binding var currentDate: Date  // The "main" date we track externally
+    @Binding var eventDisplayLevel: EventDisplayLevel // Allows MonthView to toggle EventDisplayLevel
 
     // Make these static since they're constants
     private static let nPanels = 5
@@ -11,23 +13,23 @@ struct MonthCarouselView: View {
 
     // Store both the dates and the panels
     @State private var monthDates: [Date] = []  // Source of truth for dates
-    @State private var panels: [MonthView] = []  // Panels bound to monthDates
+    // @State private var panels: [MonthView] = []  // Panels bound to monthDates
 
     // curIndex tracks which panel is front and center: 2 => panels[2].
     // (0 => 2 left, 4 => 2 right)
     @State private var curIndex: Int = 0
 
-    // For in‐flight drag:
-    @State private var dragOffset: CGFloat = 0  // how far the user is dragging horizontally
 
     @State private var monthViewHeight: CGFloat = 0
 
-    // Add state to track if we're dragging
+    // For in‐flight drag:
+    @State private var dragOffset: CGFloat = 0  // how far the user is dragging horizontally
     @State private var isDragging: Bool = false
 
     // Initialization
-    init(currentDate: Binding<Date>) {
+    init(currentDate: Binding<Date>, eventDisplayLevel: Binding<EventDisplayLevel>) {
         _currentDate = currentDate
+        _eventDisplayLevel = eventDisplayLevel
         
         // Create initial panels array
         let cal = Calendar.current
@@ -37,6 +39,7 @@ struct MonthCarouselView: View {
         var initialDates: [Date] = []
         for offset in -2...2 { 
             let newDate = cal.date(byAdding: .month, value: offset, to: baseMonth) ?? baseMonth
+            print("Init MonthNew date: \(newDate)")
             initialDates.append(offset == 0 ? currentDate.wrappedValue : newDate)
         }
         
@@ -52,9 +55,10 @@ struct MonthCarouselView: View {
             ZStack(alignment: .topLeading) {
                 // Display each of the five panels
                 ForEach(0..<Self.nPanels, id: \.self) { i in
-                    MonthView(monthDate: $monthDates[i])
+                    MonthView(monthDate: $monthDates[i], eventDisplayLevel: $eventDisplayLevel, currentDate: $currentDate)
                         .frame(width: panelWidth)
                         .overlay(
+                            // Display a border only when dragging
                             Rectangle()
                                 .frame(width: 1)
                                 .foregroundColor(Color("MyTertiary").opacity(0.3))
@@ -94,6 +98,7 @@ struct MonthCarouselView: View {
                             }
                             // Hide border after animation completes
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                eventDisplayLevel = .byHeader
                                 isDragging = false
                             }
                         } else {

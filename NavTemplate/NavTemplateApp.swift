@@ -11,6 +11,7 @@ import NavTemplateShared
 @main
 struct NavTemplateApp: App {
     @StateObject var navigationManager = NavigationManager()
+    @StateObject private var notificationModel = NotificationModel.shared
     
     init() {
         // Initialize logger for main app
@@ -24,6 +25,10 @@ struct NavTemplateApp: App {
                     .navigationDestination(for: AnyPage.self) { page in
                         page
                     }
+            }
+            .task {
+                // Check authorization status on app launch
+                await notificationModel.checkAuthorizationStatus()
             }
         }
     }

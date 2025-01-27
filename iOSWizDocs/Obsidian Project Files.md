@@ -14,7 +14,7 @@ Project files in the vault are Markdown files that contain project metadata in f
 1. **Frontmatter** (Required)
    ```yaml
    ---
-   projId: 1703123456  # Unix timestamp
+   projId: 1703123456  # Required, Unix timestamp, auto-generated if missing
    banner: https://example.com/banner.jpg  # Optional
    projectStatus: Progress  # Idea, Progress, or Done
    notetype: Project  # Must be "Project"
@@ -54,7 +54,11 @@ In addition to individual project files, the `ProjectsSummary.md` file provides 
 ## Metadata Fields
 
 ### Required Fields
-- `projId`: Unique identifier (Unix timestamp)
+- `projId`: 
+  - Unique identifier (Unix timestamp)
+  - **Auto-generated** if missing during project load
+  - Must be present before project can be used
+  - Generated using current Unix timestamp
 - `notetype`: Must be "Project"
 - `projectStatus`: Project state
 

@@ -152,6 +152,25 @@ public class ProjectModel: ObservableObject {
         }
     }
     
+    // Add at the top with other static properties
+    private static let lastSelectedProjIdKey = "LastSelectedProjId"
+    
+    // Modified lastSelectedProjId property
+    public var lastSelectedProjId: Int64 {
+        get {
+            let saved = UserDefaults.standard.integer(forKey: Self.lastSelectedProjIdKey)
+            if saved == 0 {
+                // Return inbox project's ID since inboxProject always exists
+                return inboxProject.projId
+            }
+            return Int64(saved)
+        }
+        set {
+            UserDefaults.standard.set(Int(newValue), forKey: Self.lastSelectedProjIdKey)
+            objectWillChange.send()
+        }
+    }
+    
     private init() {
         // Load project settings from UserDefaults
         self.settings = Self.loadProjectSettings()
@@ -595,7 +614,16 @@ public class ProjectModel: ObservableObject {
         if let existingId = metadata["projId"].flatMap({ Int64($0) }) {
             projId = existingId
         } else {
+            // Generate new projId
             projId = Int64(creationDate.timeIntervalSince1970 * 1000)
+            
+            // Write the new projId to the file
+            let _ = try ProjectFileManager.shared.updateFrontmatterField(
+                content,
+                field: "projId",
+                value: String(projId),
+                fileURL: fileURL
+            )
         }
         
         return ProjectMetadata(

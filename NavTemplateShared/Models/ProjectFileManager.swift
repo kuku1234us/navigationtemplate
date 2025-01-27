@@ -381,4 +381,67 @@ internal class ProjectFileManager {
             .appendingPathComponent("icons")
             .appendingPathComponent(filename)
     }
+    
+    /// Updates or adds a field in the frontmatter section of markdown content
+    /// - Parameters:
+    ///   - content: The markdown content to update
+    ///   - field: Name of the frontmatter field
+    ///   - value: Value to set for the field
+    ///   - fileURL: URL where to write the updated content
+    /// - Returns: The updated content
+    /// - Throws: File writing errors
+    public func updateFrontmatterField(_ content: String, field: String, value: String, fileURL: URL) throws -> String {
+        var lines = content.components(separatedBy: .newlines)
+        
+        var inFrontmatter = false
+        var frontmatterStart = -1
+        var frontmatterEnd = -1
+        var fieldFound = false
+        
+        // Find frontmatter boundaries and field
+        for (index, line) in lines.enumerated() {
+            if line == "---" {
+                if !inFrontmatter {
+                    frontmatterStart = index
+                    inFrontmatter = true
+                } else {
+                    frontmatterEnd = index
+                    break
+                }
+                continue
+            }
+            
+            if inFrontmatter {
+                let parts = line.split(separator: ":", maxSplits: 1).map(String.init)
+                if parts.count == 2 && parts[0].trimmingCharacters(in: .whitespaces) == field {
+                    // Update existing field
+                    lines[index] = "\(field): \(value)"
+                    fieldFound = true
+                    break
+                }
+            }
+        }
+        
+        // Validate frontmatter boundaries
+        if frontmatterStart == -1 || frontmatterEnd == -1 {
+            Logger.shared.error("[E027] Invalid frontmatter boundaries in file: \(fileURL.lastPathComponent)")
+            throw ObsidianError.invalidFrontmatter
+        }
+        
+        // If field wasn't found and we have valid frontmatter, add it
+        if !fieldFound && frontmatterStart != -1 && frontmatterEnd != -1 {
+            lines.insert("\(field): \(value)", at: frontmatterEnd)
+        }
+        
+        // Create updated content and write to file
+        let updatedContent = lines.joined(separator: "\n")
+        do {
+            try updatedContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            Logger.shared.error("[E026] Failed to write updated frontmatter to file: \(fileURL.lastPathComponent)", error: error)
+            throw error
+        }
+        
+        return updatedContent
+    }
 } 

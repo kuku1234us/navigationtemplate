@@ -70,7 +70,12 @@ struct TaskEditor: View {
                 _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
             }
         } else {
-            _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
+            // For new task, use last selected project or inbox
+            if let lastProject = ProjectModel.shared.getProject(withId: ProjectModel.shared.lastSelectedProjId) {
+                _selectedProject = State(initialValue: lastProject)
+            } else {
+                _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
+            }
         }
     }
     
@@ -97,6 +102,9 @@ struct TaskEditor: View {
             )
             taskModel.addTask(newTask)
         }
+        
+        // Save the selected project as last used
+        ProjectModel.shared.lastSelectedProjId = selectedProject.projId
         
         // Force a UI update
         DispatchQueue.main.async {
