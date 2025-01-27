@@ -35,12 +35,10 @@ struct YearPane: View, Equatable {
             HStack {
                 ForEach(0..<3) { index in
                     MiniMonthCell(
-                        monthDate: months[index]
+                        monthDate: months[index],
+                        calendarType: $calendarType,
+                        onDateChange: onDateChange
                     )
-                    .onTapGesture {
-                        onDateChange(months[index])
-                        calendarType = .month
-                    }
                     if index < 2 {
                         Spacer()
                     }
@@ -52,12 +50,10 @@ struct YearPane: View, Equatable {
             HStack {
                 ForEach(3..<6) { index in
                     MiniMonthCell(
-                        monthDate: months[index]
+                        monthDate: months[index],
+                        calendarType: $calendarType,
+                        onDateChange: onDateChange
                     )
-                    .onTapGesture {
-                        onDateChange(months[index])
-                        calendarType = .month
-                    }
                     if index < 5 {
                         Spacer()
                     }
@@ -69,12 +65,10 @@ struct YearPane: View, Equatable {
             HStack {
                 ForEach(6..<9) { index in
                     MiniMonthCell(
-                        monthDate: months[index]
+                        monthDate: months[index],
+                        calendarType: $calendarType,
+                        onDateChange: onDateChange
                     )
-                    .onTapGesture {
-                        onDateChange(months[index])
-                        calendarType = .month
-                    }
                     if index < 8 {
                         Spacer()
                     }
@@ -86,12 +80,10 @@ struct YearPane: View, Equatable {
             HStack {
                 ForEach(9..<12) { index in
                     MiniMonthCell(
-                        monthDate: months[index]
+                        monthDate: months[index],
+                        calendarType: $calendarType,
+                        onDateChange: onDateChange
                     )
-                    .onTapGesture {
-                        onDateChange(months[index])
-                        calendarType = .month
-                    }
                     if index < 11 {
                         Spacer()
                     }
@@ -104,7 +96,11 @@ struct YearPane: View, Equatable {
 
     private struct MiniMonthCell: View {
         let monthDate: Date
-
+        @Binding var calendarType: CalendarType
+        let onDateChange: (Date) -> Void
+        @State private var wasJustTapped = false  // Track if this cell was tapped
+        @State private var showTitle = true  // Control title visibility
+        
         private let calendar = Calendar.current
         
         private let monthFormatter: DateFormatter = {
@@ -115,15 +111,42 @@ struct YearPane: View, Equatable {
         
         var body: some View {
             VStack(alignment: .leading, spacing: 4) {
+                let isCurrentMonth = calendar.isDate(monthDate, equalTo: Date(), toGranularity: .month)
+                
                 Text(monthFormatter.string(from: monthDate))
                     .font(.system(size: 20, weight: .black))
                     .foregroundColor(
-                        calendar.isDate(monthDate, equalTo: Date(), toGranularity: .month) ?
+                        isCurrentMonth ?
                             Color("PageTitle") : Color("MySecondary")
                     )
                     .padding(.horizontal, 0)
+                    .opacity(calendarType == .year && showTitle ? 1 : 0)
+                    .animation(
+                        wasJustTapped ? nil : .easeInOut(duration: 0.4),  // Changed from 0.3
+                        value: calendarType
+                    )
                 
                 MiniMonthView(monthDate: monthDate)
+                    .opacity(calendarType == .year ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.4), value: calendarType)  // Changed from 0.3
+            }
+            .onTapGesture {
+                wasJustTapped = true
+                showTitle = false
+                onDateChange(monthDate)
+                calendarType = .month
+            }
+            .onChange(of: calendarType) { newType in
+                if newType == .year {
+                    if wasJustTapped {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.399) {  // Changed from 0.299
+                            showTitle = true
+                        }
+                    } else {
+                        showTitle = true
+                    }
+                    wasJustTapped = false
+                }
             }
         }
     }

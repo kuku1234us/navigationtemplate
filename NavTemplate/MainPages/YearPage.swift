@@ -115,10 +115,10 @@ struct YearPage: Page {
                     .scaleEffect(targetYearPaneScale)
                     .offset(targetYearPaneOffset)
                     
-                    .animation(.easeInOut(duration: 0.3), value: targetYearPaneScale)
-                    .animation(.easeInOut(duration: 0.3), value: targetYearPaneOffset)
+                    .animation(.easeInOut(duration: 0.4), value: targetYearPaneScale)
+                    .animation(.easeInOut(duration: 0.4), value: targetYearPaneOffset)
                     .onChange(of: calendarType) { newCalendarType in
-                        withAnimation(.easeInOut(duration: 0.3)) {
+                        withAnimation(.easeInOut(duration: 0.4)) {
                             if newCalendarType == .month {
                                 targetYearPaneRect = computeTargetYearPaneRect()
                                 targetYearPaneScale = CGSize(

@@ -111,7 +111,7 @@ struct YearCarouselView: View {
                         calendarType: $calendarType,
                         onDateChange: onDateChange
                     )
-                    .topBottomBorders(width: 0.5, opacity: 0.2)
+                    .topBottomBorders(width: 0.5, opacity: calendarType == .year ? 0.2 : 0)
                     .offset(y: curOffsetY)
                     .opacity(opacity)  // Apply opacity based on offset
                     .background(
