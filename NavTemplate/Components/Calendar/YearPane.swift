@@ -117,7 +117,7 @@ struct YearPane: View, Equatable {
             return formatter
         }()
         
-        @State private var opacity: Double = 1  // Add explicit opacity state
+        @State private var opacity: Double = 0  // Initialize to 0 instead of 1
         
         init(monthDate: Date, curDate: Binding<Date>, calendarType: Binding<CalendarType>, onDateChange: @escaping (Date) -> Void) {
             self.monthDate = monthDate
@@ -129,6 +129,8 @@ struct YearPane: View, Equatable {
             let calendar = Calendar.current
             self.isCurrentMonth = calendar.isDate(monthDate, equalTo: Date(), toGranularity: .month)
             self.isSelectedMonth = calendar.isDate(monthDate, equalTo: curDate.wrappedValue, toGranularity: .month)
+            
+            // No need to set opacity here since @State is already initialized to 0
         }
         
         var body: some View {
@@ -136,7 +138,6 @@ struct YearPane: View, Equatable {
                 Text(monthFormatter.string(from: monthDate))
                     .font(.system(size: 20, weight: .black))
                     .foregroundColor(
-                        isSelectedMonth ? .red :
                         (isCurrentMonth ?
                             Color("PageTitle") : Color("MySecondary"))
                     )

@@ -166,7 +166,6 @@ private struct DayCell: View {
         }
         .frame(maxWidth: .infinity, minHeight: 35)
         .contentShape(Rectangle())
-        .border(.green, width: 1)
         .onTapGesture {
             onDateTap(cellData.date)
         }

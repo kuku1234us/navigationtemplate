@@ -7,9 +7,9 @@ struct CalendarHeaderView: View {
     @Binding var calendarType: CalendarType
     // Enable the User to tap on the MonthTitle to switch to .byHeader (meaning by month in this case)
     @Binding var eventDisplayLevel: EventDisplayLevel
-    // Received from GhostMonthHeader for the location of the MonthTitle and Weekday letters
-    let ghostMonthShortTitleRects: [CGRect]
-    let ghostMonthLongTitleRects: [CGRect]
+    // Change to Bindings
+    @Binding var ghostMonthShortTitleRects: [CGRect]
+    @Binding var ghostMonthLongTitleRects: [CGRect]
     @Binding var ghostWeekdayRect: CGRect
     let ghostMiniMonthRects: [MiniMonthRect]
     
@@ -23,7 +23,7 @@ struct CalendarHeaderView: View {
     private let chevronWidth: CGFloat = 20
     
     @State private var monthTitleScale = CGSize(width: 1, height: 1)
-    @State private var monthTitleOffset = CGSize(width: 0, height: 102)
+    @State private var monthTitleOffset = CGSize(width: 12, height: 102)
     @State private var isMonthTitleShort = false
     @State private var miniMonthTitleScale = CGSize(width: 1, height: 1)
     @State private var miniMonthTitleOffset = CGSize(width: 0, height: 102)
@@ -161,12 +161,12 @@ struct CalendarHeaderView: View {
             transitionProgress = 0  // Reset progress
             
             // Clear the timestamp after 5 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.50) {
                 transitionStartTime = nil
             }
             
             // Reset progress after animation completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.50) {
                 transitionProgress = 0
             }
         }
@@ -274,7 +274,7 @@ struct CalendarHeaderView: View {
                 // Conditionally render the transition month text
                 Group {
                     if let startTime = transitionStartTime,
-                       Date().timeIntervalSince(startTime) < 0.4 {
+                       Date().timeIntervalSince(startTime) < 0.50 {
                         Text(transitionProgress < 1.0 ? 
                             shortMonthFormatter.string(from: curDate) :  // First half: show short name
                             monthFormatter.string(from: curDate))        // Second half: show full name
@@ -297,9 +297,6 @@ struct CalendarHeaderView: View {
                             .animation(.easeInOut(duration: 0.4), value: transitionProgress)  // Animate everything after opacity
                             .onAppear {
                                 transitionProgress = 1.0  // Set without animation for opacity
-                                withAnimation(.easeInOut(duration: 0.4)) {  // Animate other properties
-                                    // This will trigger the animation for scale and offset
-                                }
                             }
                     }
                 }
@@ -310,9 +307,9 @@ struct CalendarHeaderView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 heightHolderRectHeight = self.calendarType == .year ? 
                     CalendarHeaderView.heightHolderMinHeight : heightHolderMaxHeight
-                monthTitleOffset = CGSize(width: 0, height: currentMonthShortTitleRect.origin.y)
-                updateTargetMiniMonthTitleRects()
-                onCalendarTypeChange(self.calendarType)
+                monthTitleOffset = CGSize(width: 12, height: currentMonthShortTitleRect.origin.y)
+                // updateTargetMiniMonthTitleRects()
+                // onCalendarTypeChange(self.calendarType)
             }
         }
         // .animation(.easeInOut(duration: 0.4), value: heightHolderRectHeight)  

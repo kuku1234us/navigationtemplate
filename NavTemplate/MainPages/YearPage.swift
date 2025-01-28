@@ -1,22 +1,6 @@
 import SwiftUI
 import NavTemplateShared
 
-public struct MiniMonthRect {
-    let miniMonthShortTitleRect: CGRect  // For "Jan"
-    let miniMonthLongTitleRect: CGRect   // For "January"
-    let miniMonthViewRect: CGRect
-    
-    init(
-        miniMonthShortTitleRect: CGRect = .zero,
-        miniMonthLongTitleRect: CGRect = .zero,
-        miniMonthViewRect: CGRect = .zero
-    ) {
-        self.miniMonthShortTitleRect = miniMonthShortTitleRect
-        self.miniMonthLongTitleRect = miniMonthLongTitleRect
-        self.miniMonthViewRect = miniMonthViewRect
-    }
-}
-
 struct YearPage: Page {
     var navigationManager: NavigationManager?
     var widgets: [AnyWidget] { [] }
@@ -33,17 +17,19 @@ struct YearPage: Page {
     @State var ghostMiniMonthRects: [MiniMonthRect] = []
     @State var ghostYearPaneRect: CGRect = .zero
     @State var yearRect: CGRect = .zero
-    @State var targetYearPaneRect: CGRect = .zero
+
     @State var targetYearPaneOffset: CGSize = .zero
     @State var targetYearPaneScale: CGSize = CGSize(width: 1, height: 1)
-    @State var miniMonthRect: CGRect = .zero
+    @State var targetMonthOffset: CGSize = .zero
+    @State var targetMonthScale: CGSize = CGSize(width: 1, height: 1)
     
     @State private var curDate = Date()
     
+    @State private var monthCarouselOpacity: Double = 0  // Add opacity state
+
     func computeTargetYearPaneRect() -> CGRect {
         let curMonthIndex = Calendar.current.component(.month, from: curDate) - 1
-
-        miniMonthRect = ghostMiniMonthRects[curMonthIndex].miniMonthViewRect
+        let miniMonthRect = ghostMiniMonthRects[curMonthIndex].miniMonthViewRect  // Make local
 
         let targetYearPaneWidth = ghostYearPaneRect.width * ghostMonthRect.width / miniMonthRect.width
         let targetYearPaneHeight = ghostYearPaneRect.height * ghostMonthRect.height / miniMonthRect.height
@@ -57,6 +43,11 @@ struct YearPage: Page {
         let targetYearPaneY = ghostMonthRect.minY - edgeDistY 
 
         return CGRect(x: targetYearPaneX, y: targetYearPaneY, width: targetYearPaneWidth, height: targetYearPaneHeight)
+    }
+
+    func computeTargetMiniMonthRect() -> CGRect {
+        let curMonthIndex = Calendar.current.component(.month, from: curDate) - 1
+        return ghostMiniMonthRects[curMonthIndex].miniMonthViewRect
     }
     
     func makeMainContent() -> AnyView {
@@ -109,23 +100,34 @@ struct YearPage: Page {
                     )
                     .scaleEffect(targetYearPaneScale)
                     .offset(targetYearPaneOffset)
-                    
                     .animation(.easeInOut(duration: 0.4), value: targetYearPaneScale)
                     .animation(.easeInOut(duration: 0.4), value: targetYearPaneOffset)
+                    .onChange(of: curDate) { newDate in
+                        if calendarType == .month {
+                            let targetRect = computeTargetYearPaneRect()
+                            targetYearPaneScale = CGSize(
+                                width: computeScaleX(from: ghostYearPaneRect, to: targetRect),
+                                height: computeScaleY(from: ghostYearPaneRect, to: targetRect)
+                            )
+                            targetYearPaneOffset = CGSize(
+                                width: computeOffsetX(from: ghostYearPaneRect, to: targetRect),
+                                height: computeOffsetY(from: ghostYearPaneRect, to: targetRect)
+                            )
+                        }
+                    }
                     .onChange(of: calendarType) { newCalendarType in
                         withAnimation(.easeInOut(duration: 0.4)) {
                             if newCalendarType == .month {
-                                targetYearPaneRect = computeTargetYearPaneRect()
+                                let targetRect = computeTargetYearPaneRect()
                                 targetYearPaneScale = CGSize(
-                                    width: computeScaleX(from: ghostYearPaneRect, to: targetYearPaneRect),  
-                                    height: computeScaleY(from: ghostYearPaneRect, to: targetYearPaneRect)
+                                    width: computeScaleX(from: ghostYearPaneRect, to: targetRect),
+                                    height: computeScaleY(from: ghostYearPaneRect, to: targetRect)
                                 )
                                 targetYearPaneOffset = CGSize(
-                                    width: computeOffsetX(from: ghostYearPaneRect, to: targetYearPaneRect),
-                                    height: computeOffsetY(from: ghostYearPaneRect, to: targetYearPaneRect)
+                                    width: computeOffsetX(from: ghostYearPaneRect, to: targetRect),
+                                    height: computeOffsetY(from: ghostYearPaneRect, to: targetRect)
                                 )
                             } else {
-                                targetYearPaneRect = .zero
                                 targetYearPaneScale = CGSize(width: 1, height: 1)
                                 targetYearPaneOffset = CGSize(width: 0, height: 0)
                             }
@@ -133,9 +135,13 @@ struct YearPage: Page {
                     }
                     .onAppear {
                         // Initialize to year view state
-                        targetYearPaneRect = .zero
                         targetYearPaneScale = CGSize(width: 1, height: 1)
                         targetYearPaneOffset = CGSize(width: 0, height: 0)
+                        
+                        // Initialize month carousel to hidden state
+                        monthCarouselOpacity = 0
+                        targetMonthScale = CGSize(width: 1, height: 1)
+                        targetMonthOffset = CGSize(width: 0, height: 0)
                     }                    
                     
                     Spacer()
@@ -155,12 +161,52 @@ struct YearPage: Page {
                         eventDisplayLevel: $eventDisplayLevel,
                         ghostMonthRect: ghostMonthRect
                     )
-                    .opacity(1)
-
-                    Spacer()
+                    .opacity(monthCarouselOpacity)
+                    .frame(
+                        width: ghostMonthRect.width,
+                        height: ghostMonthRect.height
+                    )
+                    .scaleEffect(targetMonthScale)
+                    .offset(targetMonthOffset)
+                    .onChange(of: calendarType) { newCalendarType in
+                        if newCalendarType == .month {
+                            // First invisibly position at the new mini month location
+                            let targetRect = computeTargetMiniMonthRect()
+                            monthCarouselOpacity = 0  // Keep invisible
+                            targetMonthScale = CGSize(
+                                width: computeScaleX(from: ghostMonthRect, to: targetRect),
+                                height: computeScaleY(from: ghostMonthRect, to: targetRect)
+                            )
+                            targetMonthOffset = CGSize(
+                                width: computeOffsetX(from: ghostMonthRect, to: targetRect),
+                                height: computeOffsetY(from: ghostMonthRect, to: targetRect)
+                            )
+                            
+                            // Then start the expansion animation after a tiny delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                                withAnimation(.easeInOut(duration: 0.4)) {
+                                    monthCarouselOpacity = 1
+                                    targetMonthScale = CGSize(width: 1, height: 1)
+                                    targetMonthOffset = CGSize(width: 0, height: 0)
+                                }
+                            }
+                        } else {
+                            // Going from month to year - animate directly
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                monthCarouselOpacity = 0
+                                let targetRect = computeTargetMiniMonthRect()
+                                targetMonthScale = CGSize(
+                                    width: computeScaleX(from: ghostMonthRect, to: targetRect),
+                                    height: computeScaleY(from: ghostMonthRect, to: targetRect)
+                                )
+                                targetMonthOffset = CGSize(
+                                    width: computeOffsetX(from: ghostMonthRect, to: targetRect),
+                                    height: computeOffsetY(from: ghostMonthRect, to: targetRect)
+                                )
+                            }
+                        }
+                    }
                 }
-
-
 
                 VStack(spacing: 0) {
                     CalendarHeaderView(
@@ -168,8 +214,8 @@ struct YearPage: Page {
                         curDate: $curDate,
                         calendarType: $calendarType,
                         eventDisplayLevel: $eventDisplayLevel,
-                        ghostMonthShortTitleRects: ghostMonthShortTitleRects,
-                        ghostMonthLongTitleRects: ghostMonthLongTitleRects,
+                        ghostMonthShortTitleRects: $ghostMonthShortTitleRects,
+                        ghostMonthLongTitleRects: $ghostMonthLongTitleRects,
                         ghostWeekdayRect: $ghostWeekdayRect,
                         ghostMiniMonthRects: ghostMiniMonthRects
                     )
