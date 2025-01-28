@@ -10,10 +10,12 @@ internal class ProjectFileManager {
     // Returns all markdown files without checking their content
     func findAllMarkdownFiles() throws -> [URL] {
         guard let vault = ObsidianVaultAccess.shared.vaultURL else {
+            Logger.shared.error("[E028] Failed to access vault URL for project files")
             throw ObsidianError.noVaultAccess
         }
         
         guard vault.startAccessingSecurityScopedResource() else {
+            Logger.shared.error("[E029] Failed to access security scoped vault resource")
             throw ObsidianError.noVaultAccess
         }
         defer { vault.stopAccessingSecurityScopedResource() }
@@ -54,22 +56,27 @@ internal class ProjectFileManager {
     
     // Returns the content and projId if it's a project file
     func readProjectFile(_ url: URL) throws -> (content: String, projId: Int64)? {
-        let content = try String(contentsOf: url, encoding: .utf8)
-            .replacingOccurrences(of: "\0", with: "\n")
+        do {
+            let content = try String(contentsOf: url, encoding: .utf8)
+                .replacingOccurrences(of: "\0", with: "\n")
             
-        // Check if it's a project file
-        guard content.contains("notetype: Project") else {
-            return nil
+            // Check if it's a project file
+            guard content.contains("notetype: Project") else {
+                return nil
+            }
+            
+            // Get projId from ProjectModel if file exists there
+            if let project = ProjectModel.shared.getProject(atPath: url.path) {
+                return (content, project.projId)
+            }
+            
+            // Generate new projId if needed
+            let projId = Int64(Date().timeIntervalSince1970 * 1000)
+            return (content, projId)
+        } catch {
+            Logger.shared.error("[E030] Failed to read project file: \(url.lastPathComponent)", error: error)
+            throw error
         }
-        
-        // Get projId from ProjectModel if file exists there
-        if let project = ProjectModel.shared.getProject(atPath: url.path) {
-            return (content, project.projId)
-        }
-        
-        // Generate new projId if needed
-        let projId = Int64(Date().timeIntervalSince1970 * 1000)
-        return (content, projId)
     }
     
     public func parseTasksFromContent(_ content: String, projId: Int64) -> [TaskItem]? {

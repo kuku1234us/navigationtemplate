@@ -273,49 +273,54 @@ public class ProjectModel: ObservableObject {
             await reconcileProjects()
             
         } catch {
-            print("Error loading projects: \(error)")
+            Logger.shared.error("[E031] Failed to load projects from summary", error: error)
             // If loading from summary fails, reconcile projects
             await reconcileProjects()
         }
     }
     
     private func loadFromProjectsSummary() throws -> [ProjectMetadata]? {
-        let summaryURL = try getProjectsSummaryURL()
-        let data = try Data(contentsOf: summaryURL)
-        let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        
-        guard let jsonArray = jsonArray else {
-            return nil
-        }
-        
-        var projects: [ProjectMetadata] = []
-        
-        for json in jsonArray {
-            guard let projId = json["projId"] as? Int64,
-                  let projectStatus = json["projectStatus"] as? String,
-                  let noteType = json["noteType"] as? String,
-                  let filePath = json["filePath"] as? String else {
-                continue
+        do {
+            let summaryURL = try getProjectsSummaryURL()
+            let data = try Data(contentsOf: summaryURL)
+            let jsonArray = try JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+            
+            guard let jsonArray = jsonArray else {
+                return nil
             }
             
-            let banner = (json["banner"] as? String).flatMap { URL(string: $0) }
-            let icon = json["icon"] as? String
+            var projects: [ProjectMetadata] = []
             
-            let project = ProjectMetadata(
-                projId: projId,
-                banner: banner,
-                projectStatus: ProjectStatus.from(projectStatus),
-                noteType: noteType,
-                creationTime: Date(),  // These will be updated when we read the actual file
-                modifiedTime: Date(),
-                filePath: filePath,
-                icon: icon
-            )
+            for json in jsonArray {
+                guard let projId = json["projId"] as? Int64,
+                      let projectStatus = json["projectStatus"] as? String,
+                      let noteType = json["noteType"] as? String,
+                      let filePath = json["filePath"] as? String else {
+                    continue
+                }
+                
+                let banner = (json["banner"] as? String).flatMap { URL(string: $0) }
+                let icon = json["icon"] as? String
+                
+                let project = ProjectMetadata(
+                    projId: projId,
+                    banner: banner,
+                    projectStatus: ProjectStatus.from(projectStatus),
+                    noteType: noteType,
+                    creationTime: Date(),  // These will be updated when we read the actual file
+                    modifiedTime: Date(),
+                    filePath: filePath,
+                    icon: icon
+                )
+                
+                projects.append(project)
+            }
             
-            projects.append(project)
+            return projects.isEmpty ? nil : projects
+        } catch {
+            Logger.shared.error("[E031] Failed to read ProjectsSummary.md", error: error)
+            throw error
         }
-        
-        return projects.isEmpty ? nil : projects
     }
     
     private func updateSettingsWithCurrentProjects() {
@@ -531,6 +536,7 @@ public class ProjectModel: ObservableObject {
             
             print("ProjectsSummary.md updated successfully.")
         } catch {
+            Logger.shared.error("[E032] Failed to reconcile projects", error: error)
             print("Error during project reconciliation: \(error)")
         }
     }

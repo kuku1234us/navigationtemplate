@@ -4,6 +4,7 @@ import NavTemplateShared
 struct EventEditor: View {
     // For editing existing event
     let existingEvent: CalendarEvent?
+    let defaultDate: Date  // Add defaultDate parameter
     @Binding var isPresented: Bool
     let onSave: () -> Void
     
@@ -32,8 +33,9 @@ struct EventEditor: View {
     }
     
     // Initialize with optional event
-    init(event: CalendarEvent? = nil, isPresented: Binding<Bool>, onSave: @escaping () -> Void) {
+    init(event: CalendarEvent? = nil, defaultDate: Date = Date(), isPresented: Binding<Bool>, onSave: @escaping () -> Void) {
         self.existingEvent = event
+        self.defaultDate = defaultDate
         self._isPresented = isPresented
         self.onSave = onSave
         
@@ -54,7 +56,29 @@ struct EventEditor: View {
                 _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
             }
         } else {
-            _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
+            // For new events, use defaultDate's date component with current time
+            let calendar = Calendar.current
+            let now = Date()
+            
+            // Combine defaultDate's date with current time
+            let defaultComponents = calendar.dateComponents([.year, .month, .day], from: defaultDate)
+            let timeComponents = calendar.dateComponents([.hour, .minute], from: now)
+            var combinedComponents = DateComponents()
+            combinedComponents.year = defaultComponents.year
+            combinedComponents.month = defaultComponents.month
+            combinedComponents.day = defaultComponents.day
+            combinedComponents.hour = timeComponents.hour
+            combinedComponents.minute = timeComponents.minute
+            
+            let startTime = calendar.date(from: combinedComponents) ?? now
+            _startDate = State(initialValue: startTime)
+            _endDate = State(initialValue: startTime.addingTimeInterval(3600)) // 1 hour later
+            // For new events, use lastSelectedProjId from settings
+            if let lastProject = ProjectModel.shared.getProject(withId: ProjectModel.shared.lastSelectedProjId) {
+                _selectedProject = State(initialValue: lastProject)
+            } else {
+                _selectedProject = State(initialValue: ProjectModel.shared.inboxProject)
+            }           
         }
     }
     
