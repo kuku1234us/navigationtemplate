@@ -10,12 +10,16 @@ private struct DayCellData {
 }
 
 /// A single month grid. Always 6 rows x 7 columns (Sun–Sat).
-struct MonthView: View {
+struct MonthView: View, Equatable {
     // The current date that should be circled and also determines the month being displayed
     @Binding var monthDate: Date 
     @Binding var eventDisplayLevel: EventDisplayLevel
     @Binding var currentDate: Date
     @StateObject private var calendarModel = CalendarModel.shared
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.monthDate == rhs.monthDate
+    }
     
     private var weeks: [[DayCellData?]] {
         // Generate a 6 x 7 matrix of DayCellData (some may be nil if they fall outside the displayed month).

@@ -2,10 +2,9 @@ import SwiftUI
 import NavTemplateShared
 
 struct YearCarouselView: View {
-    let curDate: Date
+    @Binding var curDate: Date
     @Binding var calendarType: CalendarType
     let ghostYearPaneRect: CGRect
-    let onDateChange: (Date) -> Void
     
     // Make these static since they're constants
     private static let nPanels = 5
@@ -16,31 +15,27 @@ struct YearCarouselView: View {
     @State private var curIndex: Int = 0
     
     // For panel sizing and positioning
-    @State private var panelHeight: CGFloat = 0
-    @State private var middlePanelRect: CGRect = .zero
-    
-    // For in‐flight drag:
+    private let panelHeight: CGFloat  // Change to let since it won't change
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging: Bool = false
     
     
-    init(curDate: Date, calendarType: Binding<CalendarType>, ghostYearPaneRect: CGRect, onDateChange: @escaping (Date) -> Void) {
-        self.curDate = curDate
+    init(curDate: Binding<Date>, calendarType: Binding<CalendarType>, ghostYearPaneRect: CGRect) {
+        print("Init YearCarouselView currentDate: \(curDate.wrappedValue)")
+        
+        self._curDate = curDate
         self._calendarType = calendarType
         self.ghostYearPaneRect = ghostYearPaneRect
-        self.onDateChange = onDateChange
-        
-        panelHeight = 556 // default panel height
+        self.panelHeight = ghostYearPaneRect.height  // Initialize from ghostYearPaneRect
 
         // Create initial dates array: -2, -1, 0, +1, +2 years
         let cal = Calendar.current
-        let baseYear = Calendar.current.date(from: Calendar.current.dateComponents([.year], from: curDate))!
+        let baseYear = Calendar.current.date(from: Calendar.current.dateComponents([.year], from: curDate.wrappedValue))!
         
         var initialDates: [Date] = []
         for offset in -2...2 {
             let newDate = cal.date(byAdding: .year, value: offset, to: baseYear) ?? baseYear
-            print("Init Year New date: \(newDate)")
-            initialDates.append(offset == 0 ? curDate : newDate)
+            initialDates.append(offset == 0 ? curDate.wrappedValue : newDate)
         }
         
         // Initialize the @State properties
@@ -51,35 +46,21 @@ struct YearCarouselView: View {
     private func shiftPanels(direction: Int) {
         // Move the current index
         curIndex = mod((curIndex + direction), Self.nPanels)
-
+        curDate = yearDates[curIndex]  // Update binding directly
+        
         let cal = Calendar.current
-
-        let currentDate = yearDates[curIndex]  // Use yearDates instead of panels
-        onDateChange(currentDate)  // Notify parent of date change
-        print("New currentDate: \(currentDate)")
-
         var changeIndex = 0
         var newDate = Date()
         let today = Date()
 
         if (direction == 1) {
             changeIndex = mod((curIndex+Self.halfPanels), Self.nPanels)
-            newDate = cal.date(byAdding: .year, value: Self.halfPanels, to: firstOfTheYear(currentDate)) ?? currentDate
-            // Check if newDate is in the current year and today
-            if cal.isDate(newDate, equalTo: today, toGranularity: .year) {
-                yearDates[changeIndex] = today
-            } else {
-                yearDates[changeIndex] = newDate
-            }
+            newDate = cal.date(byAdding: .year, value: Self.halfPanels, to: firstOfTheYear(curDate)) ?? curDate
+            yearDates[changeIndex] = cal.isDate(newDate, equalTo: today, toGranularity: .year) ? today : newDate
         } else {
             changeIndex = mod((curIndex-Self.halfPanels), Self.nPanels)
-            newDate = cal.date(byAdding: .year, value: -1*Self.halfPanels, to: firstOfTheYear(currentDate)) ?? currentDate
-            // Check if newDate is in the current year and today
-            if cal.isDate(newDate, equalTo: today, toGranularity: .year) {
-                yearDates[changeIndex] = today
-            } else {
-                yearDates[changeIndex] = newDate
-            }
+            newDate = cal.date(byAdding: .year, value: -1*Self.halfPanels, to: firstOfTheYear(curDate)) ?? curDate
+            yearDates[changeIndex] = cal.isDate(newDate, equalTo: today, toGranularity: .year) ? today : newDate
         }
 
         // Reset dragOffset to 0 (center the new position)
@@ -99,68 +80,68 @@ struct YearCarouselView: View {
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack(alignment: .topLeading) {
-                // Create the panels
-                ForEach(0..<Self.nPanels, id: \.self) { index in
-                    let curOffsetY = yOffset(forIndex: index)
-                    let opacity = max(0, 1 - abs(curOffsetY) / panelHeight * 0.8)
-                    
-                    YearPane(
-                        yearDate: $yearDates[index],
-                        calendarType: $calendarType,
-                        onDateChange: onDateChange
-                    )
-                    .topBottomBorders(width: 0.5, opacity: calendarType == .year ? 0.2 : 0)
-                    .offset(y: curOffsetY)
-                    .opacity(opacity)  // Apply opacity based on offset
-                    .background(
-                        index == Self.halfPanels ?
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: YearHeightPreferenceKey.self, 
-                                    value: geo.size.height
-                                )
-                            }
-                        : nil
-                    )
+        ZStack(alignment: .topLeading) {
+            // Create the panels
+            ForEach(0..<Self.nPanels, id: \.self) { index in
+                let curOffsetY = yOffset(forIndex: index)
+                let opacity = max(0, 1 - abs(curOffsetY) / panelHeight * 0.8)
+                
+                YearPane(
+                    yearDate: $yearDates[index],
+                    curDate: $curDate,
+                    calendarType: $calendarType,
+                    onDateChange: { newDate in
+                        curDate = newDate
+                    }
+                )
+                .topBottomBorders(width: 0.5, opacity: calendarType == .year ? 0.2 : 0)
+                .offset(y: curOffsetY)
+                .opacity(opacity)  // Apply opacity based on offset
+            }
+        }
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: ghostYearPaneRect.height
+        )
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    isDragging = true
+                    dragOffset = value.translation.height
                 }
-            }
-            .frame(
-                maxWidth: .infinity,
-                maxHeight: ghostYearPaneRect.height  // Use maxHeight instead of height
-            )
-            .onPreferenceChange(YearHeightPreferenceKey.self) { h in
-                panelHeight = h
-                print("New panelHeight onPreference: \(panelHeight)")
-            }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        isDragging = true
-                        dragOffset = value.translation.height
-                    }
-                    .onEnded { value in
-                        let threshold = panelHeight / 5
-                        let translation = value.translation.height
-                        if abs(translation) > threshold {
-                            let direction = (translation < 0) ? +1 : -1
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                shiftPanels(direction: direction)
-                            }
-                            // DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                isDragging = false
-                            // }
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                dragOffset = 0
-                            }
-                            // DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                                isDragging = false
-                            // }
+                .onEnded { value in
+                    let threshold = panelHeight / 5
+                    let translation = value.translation.height
+                    if abs(translation) > threshold {
+                        let direction = (translation < 0) ? +1 : -1
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            shiftPanels(direction: direction)
                         }
+                        // DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            isDragging = false
+                        // }
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            dragOffset = 0
+                        }
+                        // DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            isDragging = false
+                        // }
                     }
-            )
+                }
+        )
+        .onChange(of: curDate) { newDate in
+            // Only update if the year actually changed
+            let cal = Calendar.current
+            if !cal.isDate(yearDates[curIndex], equalTo: newDate, toGranularity: .year) {
+                // Create new dates array centered on the new date
+                let baseYear = firstOfTheYear(newDate)
+                yearDates = (-2...2).map { offset in
+                    let date = cal.date(byAdding: .year, value: offset, to: baseYear) ?? baseYear
+                    return offset == 0 ? newDate : date
+                }
+                curIndex = Self.halfPanels  // Reset to center panel
+            }
         }
     }
     

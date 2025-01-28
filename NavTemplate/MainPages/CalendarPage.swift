@@ -8,6 +8,7 @@ struct CalendarPage: Page {
     @State private var ghostMonthLongTitleRect: CGRect = .zero
     @State private var ghostWeekdayRect: CGRect = .zero
     @State var ghostMiniMonthRects: [MiniMonthRect] = []
+    @State private var ghostMonthRect: CGRect = .zero
     
     @StateObject private var calendarModel = CalendarModel.shared
     @State private var searchText = ""
@@ -98,7 +99,8 @@ struct CalendarPage: Page {
                     // Month view
                     MonthCarouselView(
                         currentDate: $curDate,
-                        eventDisplayLevel: $eventDisplayLevel
+                        eventDisplayLevel: $eventDisplayLevel,
+                        ghostMonthRect: ghostMonthRect
                     )
                     
                     if isLoading {

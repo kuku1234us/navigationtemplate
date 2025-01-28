@@ -81,10 +81,7 @@ struct CalendarHeaderView: View {
         
         // Update both rects if data is available
         if !ghostMiniMonthRects.isEmpty && currentMonth >= 0 && currentMonth < ghostMiniMonthRects.count {
-            let rects = ghostMiniMonthRects[currentMonth]
-            print("Target Mini Month Short Title Rect: \(rects.miniMonthShortTitleRect)")
-            print("Target Mini Month Long Title Rect: \(rects.miniMonthLongTitleRect)")
-            
+            let rects = ghostMiniMonthRects[currentMonth]            
             targetMiniMonthShortTitleRect = rects.miniMonthShortTitleRect
             targetMiniMonthLongTitleRect = rects.miniMonthLongTitleRect
         } else {
@@ -118,13 +115,6 @@ struct CalendarHeaderView: View {
                 width: computeOffsetX(from: sourceRect, to: targetMiniMonthShortTitleRect),
                 height: computeOffsetY(from: sourceRect, to: targetMiniMonthShortTitleRect)
             )
-            // print(">>>>>>>")
-            // print("ghostMonthShortTitleRect : \(ghostMonthShortTitleRect )")
-            // print("targetMiniMonthShortTitleRect: \(targetMiniMonthShortTitleRect)")
-            // print("sourceRect: \(sourceRect)")
-            // print("monthTitleScale: \(monthTitleScale)")
-            // print("monthTitleOffset: \(monthTitleOffset)")
-            // print(">>>>>>>")
 
             heightHolderRectHeight = CalendarHeaderView.heightHolderMinHeight
 
@@ -165,13 +155,6 @@ struct CalendarHeaderView: View {
                 width: computeOffsetX(from: sourceRect2, to: currentMonthLongTitleRect),
                 height: computeOffsetY(from: sourceRect2, to: currentMonthLongTitleRect)
             )
-
-            print(">>>>>>>")
-            print("sourceRect: \(sourceRect)")
-            print("currentMonthLongTitleRect: \(currentMonthLongTitleRect)")
-            print("miniMonthTitleScale: \(miniMonthTitleScale)")
-            print("miniMonthTitleOffset: \(miniMonthTitleOffset)")
-            print(">>>>>>>")
 
             // Start transition animation
             transitionStartTime = Date()

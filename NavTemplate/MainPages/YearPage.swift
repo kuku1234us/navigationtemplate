@@ -38,7 +38,6 @@ struct YearPage: Page {
     @State var targetYearPaneScale: CGSize = CGSize(width: 1, height: 1)
     @State var miniMonthRect: CGRect = .zero
     
-    @State private var yearDate = Date()
     @State private var curDate = Date()
     
     func computeTargetYearPaneRect() -> CGRect {
@@ -99,13 +98,9 @@ struct YearPage: Page {
                         .opacity(0)
 
                     YearCarouselView(
-                        curDate: yearDate,
+                        curDate: $curDate,
                         calendarType: $calendarType,
-                        ghostYearPaneRect: ghostYearPaneRect,
-                        onDateChange: { newDate in
-                            // This sets the YearPage's curDate
-                            self.curDate = newDate
-                        }
+                        ghostYearPaneRect: ghostYearPaneRect
                     )
                     // Need to confirm the dimensions of YearCarouselView for the scale/offset to work
                     .frame(
@@ -145,6 +140,27 @@ struct YearPage: Page {
                     
                     Spacer()
                 }
+
+                // Month Carousel View
+                VStack(spacing: 0) {
+                    GhostMonthHeader(
+                        curDate: curDate,
+                        reportMonthTitleRects: { _, _ in },
+                        ghostWeekdayRect: .constant(.zero)
+                    )
+                    .opacity(0)
+
+                    MonthCarouselView(
+                        currentDate: $curDate,
+                        eventDisplayLevel: $eventDisplayLevel,
+                        ghostMonthRect: ghostMonthRect
+                    )
+                    .opacity(1)
+
+                    Spacer()
+                }
+
+
 
                 VStack(spacing: 0) {
                     CalendarHeaderView(

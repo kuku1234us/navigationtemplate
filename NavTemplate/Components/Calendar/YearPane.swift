@@ -2,7 +2,8 @@ import SwiftUI
 import NavTemplateShared
 
 struct YearPane: View, Equatable {
-    @Binding var yearDate: Date
+    @Binding var yearDate: Date  // The year being displayed
+    @Binding var curDate: Date   // The currently selected date
     @Binding var calendarType: CalendarType
     let onDateChange: (Date) -> Void
     
@@ -10,12 +11,14 @@ struct YearPane: View, Equatable {
 
     // Compare the actual values, not the Bindings
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.yearDate == rhs.yearDate &&
+        let calendar = Calendar.current
+        return calendar.isDate(lhs.yearDate, equalTo: rhs.yearDate, toGranularity: .year) &&
         lhs.calendarType == rhs.calendarType
     }    
     
-    init(yearDate: Binding<Date>, calendarType: Binding<CalendarType>, onDateChange: @escaping (Date) -> Void) {
+    init(yearDate: Binding<Date>, curDate: Binding<Date>, calendarType: Binding<CalendarType>, onDateChange: @escaping (Date) -> Void) {
         self._yearDate = yearDate
+        self._curDate = curDate
         self._calendarType = calendarType
         self.onDateChange = onDateChange
     }
@@ -36,6 +39,7 @@ struct YearPane: View, Equatable {
                 ForEach(0..<3) { index in
                     MiniMonthCell(
                         monthDate: months[index],
+                        curDate: $curDate,
                         calendarType: $calendarType,
                         onDateChange: onDateChange
                     )
@@ -51,6 +55,7 @@ struct YearPane: View, Equatable {
                 ForEach(3..<6) { index in
                     MiniMonthCell(
                         monthDate: months[index],
+                        curDate: $curDate,
                         calendarType: $calendarType,
                         onDateChange: onDateChange
                     )
@@ -66,6 +71,7 @@ struct YearPane: View, Equatable {
                 ForEach(6..<9) { index in
                     MiniMonthCell(
                         monthDate: months[index],
+                        curDate: $curDate,
                         calendarType: $calendarType,
                         onDateChange: onDateChange
                     )
@@ -81,6 +87,7 @@ struct YearPane: View, Equatable {
                 ForEach(9..<12) { index in
                     MiniMonthCell(
                         monthDate: months[index],
+                        curDate: $curDate,
                         calendarType: $calendarType,
                         onDateChange: onDateChange
                     )
@@ -96,12 +103,13 @@ struct YearPane: View, Equatable {
 
     private struct MiniMonthCell: View {
         let monthDate: Date
+        @Binding var curDate: Date   // The currently selected date
         @Binding var calendarType: CalendarType
         let onDateChange: (Date) -> Void
-        @State private var wasJustTapped = false  // Track if this cell was tapped
-        @State private var showTitle = true  // Control title visibility
         
         private let calendar = Calendar.current
+        @State private var isCurrentMonth: Bool  // Add as member
+        @State private var isSelectedMonth: Bool  // Add as member
         
         private let monthFormatter: DateFormatter = {
             let formatter = DateFormatter()
@@ -109,43 +117,91 @@ struct YearPane: View, Equatable {
             return formatter
         }()
         
+        @State private var opacity: Double = 1  // Add explicit opacity state
+        
+        init(monthDate: Date, curDate: Binding<Date>, calendarType: Binding<CalendarType>, onDateChange: @escaping (Date) -> Void) {
+            self.monthDate = monthDate
+            self._curDate = curDate
+            self._calendarType = calendarType
+            self.onDateChange = onDateChange
+            
+            // Initialize the comparison flags
+            let calendar = Calendar.current
+            self.isCurrentMonth = calendar.isDate(monthDate, equalTo: Date(), toGranularity: .month)
+            self.isSelectedMonth = calendar.isDate(monthDate, equalTo: curDate.wrappedValue, toGranularity: .month)
+        }
+        
         var body: some View {
             VStack(alignment: .leading, spacing: 4) {
-                let isCurrentMonth = calendar.isDate(monthDate, equalTo: Date(), toGranularity: .month)
-                
                 Text(monthFormatter.string(from: monthDate))
                     .font(.system(size: 20, weight: .black))
                     .foregroundColor(
-                        isCurrentMonth ?
-                            Color("PageTitle") : Color("MySecondary")
+                        isSelectedMonth ? .red :
+                        (isCurrentMonth ?
+                            Color("PageTitle") : Color("MySecondary"))
                     )
                     .padding(.horizontal, 0)
-                    .opacity(calendarType == .year && showTitle ? 1 : 0)
-                    .animation(
-                        wasJustTapped ? nil : .easeInOut(duration: 0.4),  // Changed from 0.3
-                        value: calendarType
-                    )
+                    .opacity(opacity)
                 
                 MiniMonthView(monthDate: monthDate)
                     .opacity(calendarType == .year ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.4), value: calendarType)  // Changed from 0.3
+                    .animation(.easeInOut(duration: 0.4), value: calendarType)
             }
             .onTapGesture {
-                wasJustTapped = true
-                showTitle = false
+                // First update curDate to trigger animations in all cells
+                curDate = monthDate   // Update the selected date
+                self.isCurrentMonth = calendar.isDate(monthDate, equalTo: Date(), toGranularity: .month)
+                self.isSelectedMonth = calendar.isDate(monthDate, equalTo: curDate, toGranularity: .month)
                 onDateChange(monthDate)
-                calendarType = .month
+                
+                // Delay calendarType change to allow animations to complete
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                    calendarType = .month
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.014) {
+                    opacity = 0  // Hide immediately when selected
+                }
+
             }
             .onChange(of: calendarType) { newType in
                 if newType == .year {
-                    if wasJustTapped {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.399) {  // Changed from 0.299
-                            showTitle = true
+                    // Going from .month to .year
+                    self.isCurrentMonth = calendar.isDate(monthDate, equalTo: Date(), toGranularity: .month)
+                    self.isSelectedMonth = calendar.isDate(monthDate, equalTo: curDate, toGranularity: .month)
+                    
+                    if isSelectedMonth {
+                        // For selected month: show after delay, no animation
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.399) {
+                            withAnimation(nil) {
+                                opacity = 1
+                            }
                         }
                     } else {
-                        showTitle = true
+                        // For non-selected months: animate showing
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            opacity = 1
+                        }
                     }
-                    wasJustTapped = false
+                } else {
+                    // Going from .year to .month
+                    if isSelectedMonth {
+                        // For selected month: hide immediately
+                        withAnimation(nil) {
+                            opacity = 0
+                        }
+                    } else {
+                        // For non-selected months: animate hiding
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            opacity = 0
+                        }
+                    }
+                }
+            }
+            .onChange(of: curDate) { newDate in
+                // Update isSelectedMonth when curDate changes from outside
+                self.isSelectedMonth = calendar.isDate(monthDate, equalTo: newDate, toGranularity: .month)
+                if isSelectedMonth && calendarType == .month {
+                    opacity = 0
                 }
             }
         }

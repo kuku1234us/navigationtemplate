@@ -15,12 +15,6 @@ struct GhostMonthPage: View {
                 ghostWeekdayRect: $ghostWeekdayRect
             )
 
-            // Month view with GeometryReader to track its natural position
-            // MonthCarouselView(
-            //     currentDate: $curDate,
-            //     eventDisplayLevel: $eventDisplayLevel
-            // )
-            // .padding(.horizontal, 12)
             GhostMonthView()
                 .background(
                     GeometryReader { geo in

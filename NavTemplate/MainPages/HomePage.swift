@@ -96,7 +96,6 @@ struct HomePage: Page {
              
             ])
             .onDisappear {
-                // print(">>>>> HomePage cleanup")
                 // PropertyProxyFactory.shared.remove(id: leftSheetId)
                 // NavigationState.shared.setActiveWidgetId(nil)
             }
