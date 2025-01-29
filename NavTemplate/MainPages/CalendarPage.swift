@@ -373,10 +373,18 @@ struct CalendarPage: Page {
                         withAnimation(.easeInOut(duration: 0.4)) {
                             eventListOffset = 0
                             eventListOpacity = 1
+                        }
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.spring(
+                            response: 0.4,    // Duration of the animation
+                            dampingFraction: 0.8,  // Bounce amount (lower = more bounce)
+                            blendDuration: 0
+                        )) {
                             addButtonOffset = 0
                             addButtonOpacity = 1
                         }
-                    }
+                    }                    
                 }
             }
             .onAppear {
