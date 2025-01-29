@@ -6,6 +6,8 @@ struct EventEditor: View {
     let existingEvent: CalendarEvent?
     let defaultDate: Date  // Add defaultDate parameter
     @Binding var isPresented: Bool
+    @Binding var showReminderPicker: Bool  // Change to Binding
+    let reminderPickerCallback: (@escaping (Int) -> Void) -> Void  // Add @escaping here
     let onSave: () -> Void
     
     // State for event properties
@@ -33,10 +35,19 @@ struct EventEditor: View {
     }
     
     // Initialize with optional event
-    init(event: CalendarEvent? = nil, defaultDate: Date = Date(), isPresented: Binding<Bool>, onSave: @escaping () -> Void) {
+    init(
+        event: CalendarEvent? = nil,
+        defaultDate: Date = Date(),
+        isPresented: Binding<Bool>,
+        showReminderPicker: Binding<Bool>,
+        reminderPickerCallback: @escaping (@escaping (Int) -> Void) -> Void,  // Add @escaping here too
+        onSave: @escaping () -> Void
+    ) {
         self.existingEvent = event
         self.defaultDate = defaultDate
         self._isPresented = isPresented
+        self._showReminderPicker = showReminderPicker
+        self.reminderPickerCallback = reminderPickerCallback
         self.onSave = onSave
         
         // Set initial values
@@ -109,13 +120,43 @@ struct EventEditor: View {
         
         Task {
             do {
+                // Save event to calendar
                 try await calendarModel.appendEvent(newEvent)
+                
+                // Handle notifications if authorized
+                if NotificationModel.shared.isAuthorized {
+                    await NotificationModel.shared.scheduleEventReminders(for: newEvent)
+                } else {
+                    // Request authorization if needed
+                    let granted = await NotificationModel.shared.requestAuthorization()
+                    if granted {
+                        await NotificationModel.shared.scheduleEventReminders(for: newEvent)
+                    }
+                }
+                
                 onSave()
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 isPresented = false
             } catch {
                 print("Failed to save event: \(error)")
             }
+        }
+    }
+    
+    // Add onChange handlers for date validation
+    private func validateStartDate(_ newDate: Date) {
+        if newDate >= endDate {
+            // If start time is later than or equal to end time,
+            // move end time to 1 hour after new start time
+            endDate = newDate.addingTimeInterval(3600)
+        }
+    }
+    
+    private func validateEndDate(_ newDate: Date) {
+        if newDate <= startDate {
+            // If end time is earlier than or equal to start time,
+            // move start time to 1 hour before new end time
+            startDate = newDate.addingTimeInterval(-3600)
         }
     }
     
@@ -141,14 +182,24 @@ struct EventEditor: View {
             .padding(.horizontal, 16)
             
             VStack(alignment: .leading, spacing: 10) {
-                // Date Pickers
+                // Date Pickers with validation
                 DatePicker("Start", selection: $startDate)
                     .foregroundColor(Color("MySecondary"))
+                    .onChange(of: startDate) { oldValue, newValue in
+                        validateStartDate(newValue)
+                    }
+                
                 DatePicker("End", selection: $endDate)
                     .foregroundColor(Color("MySecondary"))
+                    .onChange(of: endDate) { oldValue, newValue in
+                        validateEndDate(newValue)
+                    }
                 
                 // Reminders List
-                ReminderListView(selectedReminders: $selectedReminders)
+                ReminderListView(
+                    selectedReminders: $selectedReminders,
+                    showReminderPicker: $showReminderPicker
+                )
                 
                 // Location Input (conditionally shown)
                 if showLocationInput {
@@ -232,6 +283,15 @@ struct EventEditor: View {
                                     Text(ReminderListView.formatReminderOption(minutes))
                                 }
                             }
+                        }
+                        
+                        Button {
+                            reminderPickerCallback { minutes in
+                                selectedReminders.insert(minutes)
+                            }
+                            showReminderPicker = true
+                        } label: {
+                            Text("Pick Time...")
                         }
                     } label: {
                         Image(systemName: selectedReminders.isEmpty ? "bell" : "bell.fill")

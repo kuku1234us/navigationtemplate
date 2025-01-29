@@ -7,15 +7,39 @@ struct ReminderBadge: View {
     private var displayText: String {
         if minutes == 0 {
             return "@"
-        } else if minutes >= 1440 { // 24 hours
-            let days = minutes / 1440
-            return "\(days)d"
-        } else if minutes >= 60 {
-            let hours = minutes / 60
-            return "\(hours)h"
-        } else {
-            return "\(minutes)m"
         }
+        
+        var components: [String] = []
+        var remainingMinutes = minutes
+        
+        // Calculate weeks
+        if remainingMinutes >= 10080 { // 7 * 24 * 60
+            let weeks = remainingMinutes / 10080
+            components.append("\(weeks)w")
+            remainingMinutes %= 10080
+        }
+        
+        // Calculate days
+        if remainingMinutes >= 1440 { // 24 * 60
+            let days = remainingMinutes / 1440
+            components.append("\(days)d")
+            remainingMinutes %= 1440
+        }
+        
+        // Calculate hours
+        if remainingMinutes >= 60 {
+            let hours = remainingMinutes / 60
+            components.append("\(hours)h")
+            remainingMinutes %= 60
+        }
+        
+        // Add remaining minutes
+        if remainingMinutes > 0 {
+            components.append("\(remainingMinutes)m")
+        }
+        
+        // Join all components
+        return components.joined(separator: " ")
     }
     
     var body: some View {

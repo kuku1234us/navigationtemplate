@@ -323,7 +323,7 @@ public class CalendarModel: ObservableObject {
         let calendar = Calendar.current
         let year = calendar.component(.year, from: date)
         guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)),
-              let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth) else {
+              let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: 0), to: startOfMonth) else {
             print("Failed to calculate month boundaries")
             return []
         }
@@ -331,11 +331,9 @@ public class CalendarModel: ObservableObject {
         let startTimestamp = Int(startOfMonth.timeIntervalSince1970)
         let endTimestamp = Int(endOfMonth.timeIntervalSince1970)
 
-        let eventsList = eventsByYear[year] ?? []
-        
         let events = eventsByYear[year]?.filter { event in
-            // Event starts before month ends AND ends after month starts
-            event.startTime <= endTimestamp && event.endTime >= startTimestamp
+            // Use same logic as getEventsForDay - check if event starts in this month
+            event.startTime >= startTimestamp && event.startTime < endTimestamp
         } ?? []
         
         return events
@@ -355,6 +353,9 @@ public class CalendarModel: ObservableObject {
     
     @MainActor
     public func deleteEvent(withId eventId: Int64) async throws {
+        // Remove notifications first
+        await NotificationModel.shared.removeEventReminders(for: eventId)
+        
         // Get the year from the event we're deleting
         var affectedYear: Int?
         for (year, events) in eventsByYear {

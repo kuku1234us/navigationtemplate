@@ -55,6 +55,9 @@ struct CalendarPage: Page {
     @State private var addButtonOffset: CGFloat = 0
     @State private var addButtonOpacity: Double = 1
 
+    @State private var showReminderPicker = false
+    @State private var activeReminderCallback: ((Int) -> Void)?
+
     func computeTargetYearPaneRect() -> CGRect {
         let curMonthIndex = Calendar.current.component(.month, from: curDate) - 1
         let miniMonthRect = ghostMiniMonthRects[curMonthIndex].miniMonthViewRect  // Make local
@@ -91,7 +94,7 @@ struct CalendarPage: Page {
             let year = Calendar.current.component(.year, from: curDate)
             events = calendarModel.getEventsForYear(year)
         }
-        
+
         if eventDisplayLevel == .bySelection {
             events = calendarModel.getEventsForDay(date: curDate)
         }
@@ -323,6 +326,10 @@ struct CalendarPage: Page {
                             event: eventToEdit,
                             defaultDate: curDate,
                             isPresented: $showEventEditor,
+                            showReminderPicker: $showReminderPicker,
+                            reminderPickerCallback: { callback in
+                                self.activeReminderCallback = callback
+                            },
                             onSave: {
                                 updateDisplayedEvents()
                             }
@@ -340,7 +347,21 @@ struct CalendarPage: Page {
                 // Add Event Button
                 AddItemButton(onTap: handleNewEvent)
                     .offset(y: addButtonOffset)
-                    .opacity(addButtonOpacity)
+
+                // Add ReminderPicker
+                if showReminderPicker {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            showReminderPicker = false
+                        }
+                    
+                    ReminderPickerDialog { minutes in
+                        activeReminderCallback?(minutes)
+                        showReminderPicker = false
+                    }
+                    .transition(.scale)
+                }
             }
             .task {
                 isLoading = true

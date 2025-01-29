@@ -53,32 +53,18 @@ public class NotificationModel: ObservableObject {
             let triggerDate = Date(timeIntervalSince1970: TimeInterval(event.startTime))
                 .addingTimeInterval(TimeInterval(-minutesBefore * 60))
             
-            // Don't schedule if trigger time is in the past
-            guard triggerDate > Date() else {
-                Logger.shared.error("Skipping notification - trigger date is in past: \(triggerDate)")
-                continue
-            }
+            guard triggerDate > Date() else { continue }
             
             let content = UNMutableNotificationContent()
             content.title = event.eventTitle
             content.body = createReminderBody(event: event, minutesBefore: minutesBefore)
             content.sound = .default
             
-            // For testing purposes, if the trigger is within 60 seconds, use a time interval trigger
-            let timeUntilTrigger = triggerDate.timeIntervalSince(Date())
-            let trigger: UNNotificationTrigger
-            
-            if timeUntilTrigger <= 60 {
-                trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeUntilTrigger, repeats: false)
-                Logger.shared.debug("Using time interval trigger for: \(timeUntilTrigger) seconds")
-            } else {
-                let components = Calendar.current.dateComponents(
-                    [.year, .month, .day, .hour, .minute, .second],
-                    from: triggerDate
-                )
-                trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-                Logger.shared.debug("Using calendar trigger for: \(triggerDate)")
-            }
+            let components = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute, .second],
+                from: triggerDate
+            )
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             
             let identifier = notificationIdentifier(eventId: event.eventId, minutesBefore: minutesBefore)
             let request = UNNotificationRequest(
@@ -89,20 +75,8 @@ public class NotificationModel: ObservableObject {
             
             do {
                 try await center.add(request)
-                Logger.shared.debug("Successfully scheduled notification for \(triggerDate)")
-                
-                // Debug: List all pending notifications
-                let pending = await center.pendingNotificationRequests()
-                Logger.shared.debug("Pending notifications: \(pending.count)")
-                for req in pending {
-                    if let trigger = req.trigger as? UNCalendarNotificationTrigger {
-                        Logger.shared.debug("- \(req.identifier) scheduled for: \(trigger.nextTriggerDate() ?? Date())")
-                    } else if let trigger = req.trigger as? UNTimeIntervalNotificationTrigger {
-                        Logger.shared.debug("- \(req.identifier) in \(trigger.timeInterval) seconds")
-                    }
-                }
             } catch {
-                Logger.shared.error("Failed to schedule notification: \(error)")
+                Logger.shared.error("[E026] Failed to schedule notification: \(error)")
             }
         }
     }
