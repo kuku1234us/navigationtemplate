@@ -25,6 +25,8 @@ struct MaintenancePage: View {
                     iCloudPage()
                 } else if selectedTab == .test2 {
                     Test2()
+                } else if selectedTab == .menuSettings {
+                    BottomMenuSettings()
                 }
                 Spacer()
             }

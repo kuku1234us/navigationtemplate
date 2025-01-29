@@ -1,20 +1,20 @@
 import SwiftUI
-
-struct MenuBarItem {
-    let unselectedIcon: String
-    let selectedIcon: String
-    let targetView: AnyView
-}
+import NavTemplateShared
 
 struct ViewWithBottomMenu: View {
     let items: [MenuBarItem]
     @State private var selectedIndex: Int = 0
     @State private var bounceValues: [Int] = Array(repeating: 0, count: 10)  // Support up to 10 menu items
+    @StateObject private var menuModel = MenuModel.shared
+    
+    private var sortedItems: [MenuBarItem] {
+        menuModel.sortMenuItems(items)
+    }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                items[selectedIndex].targetView
+                sortedItems[selectedIndex].targetView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     // .animation(.easeInOut(duration: 0.3), value: selectedIndex)
                 
@@ -22,7 +22,7 @@ struct ViewWithBottomMenu: View {
                 VStack {
                     Spacer()
                     HStack {
-                        ForEach(items.indices, id: \.self) { index in
+                        ForEach(sortedItems.indices, id: \.self) { index in
                             Spacer()
                             Button(action: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0.6)) {
@@ -41,7 +41,7 @@ struct ViewWithBottomMenu: View {
                                             .frame(width: 50, height: 50)
                                         }
 
-                                        Image(systemName: selectedIndex == index ? items[index].selectedIcon : items[index].unselectedIcon)
+                                        Image(systemName: selectedIndex == index ? sortedItems[index].selectedIcon : sortedItems[index].unselectedIcon)
                                             .font(.system(size: 20))
                                             .foregroundColor(selectedIndex == index ? Color("Accent") : Color("MyTertiary"))
                                             .scaleEffect(selectedIndex == index ? 1.15 : 1.0)

@@ -31,12 +31,7 @@ struct DashboardLinksView {
                     )
                     navigationManager?.navigate(to: AnyPage(fileBrowserPage))
                 }
-                Button("Menu Page") {
-                    let menuPage = MenuPage(
-                        navigationManager: navigationManager
-                    )
-                    navigationManager?.navigate(to: AnyPage(menuPage))
-                }
+
                 Button("Activities") {
                     let activitiesPage = ActivitiesPage(
                         navigationManager: navigationManager

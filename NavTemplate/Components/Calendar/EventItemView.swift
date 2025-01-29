@@ -1,7 +1,7 @@
 import SwiftUI
 import NavTemplateShared
 
-public struct EventItemView: View {
+public struct EventItemView: View, Equatable {
     let event: CalendarEvent
     let onEventTap: (CalendarEvent) -> Void
     @State private var offset: CGFloat = 0
@@ -9,10 +9,15 @@ public struct EventItemView: View {
     private let minDragDistance: CGFloat = 5
     private let deleteButtonWidth: CGFloat = 80
     
+    public static func == (lhs: EventItemView, rhs: EventItemView) -> Bool {
+        return lhs.event.eventId == rhs.event.eventId
+    }
+
     public init(event: CalendarEvent, onEventTap: @escaping (CalendarEvent) -> Void) {
         self.event = event
         self.onEventTap = onEventTap
     }
+
     
     private var timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -128,7 +133,7 @@ public struct EventItemView: View {
                         Spacer()
                     }
                     .contentShape(Rectangle())
-                    .gesture(
+                    .simultaneousGesture(
                         DragGesture(minimumDistance: minDragDistance)
                             .onChanged { value in
                                 // Only allow left swipe (negative values) up to delete button width

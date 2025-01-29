@@ -46,9 +46,18 @@ struct MaintenanceHeaderView: View {
                         frameSize: 30,
                         action: { selectedTab = .test2 }
                     )
+                    
+                    IconButton(
+                        selectedIcon: "menubar.dock.rectangle",
+                        unselectedIcon: "menubar.dock.rectangle",
+                        isSelected: .init(
+                            get: { selectedTab == .menuSettings },
+                            set: { _ in selectedTab = .menuSettings }
+                        ),
+                        frameSize: 30,
+                        action: { selectedTab = .menuSettings }
+                    )
                 }
-
-
             }
         }
         .padding()
@@ -61,4 +70,5 @@ enum MaintenanceTab {
     case logs
     case vault
     case test2
+    case menuSettings
 } 
