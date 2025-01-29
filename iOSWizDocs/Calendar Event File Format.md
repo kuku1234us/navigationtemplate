@@ -92,7 +92,14 @@ After reconciliation, only undeleted and latest events are retained:
 ### Optional Fields for Events
 
 1. **`projId`**: Identifier linking the event to a project. Example: `12345`.
-2. **`reminders`**: Array of positive integers representing time offsets (in minutes) before the event when reminders will trigger. Example: `[60, 30]`.
+2. **`reminders`**: Array of ReminderInfo objects
+   - Each reminder contains:
+     ```json
+     {
+         "minutes": 15,  // Int: Minutes before event
+         "sound": "Game" // String: Sound name without extension
+     }
+     ```
 3. **`recurrence`**: Single character specifying recurrence (`"D"`, `"W"`, `"M"`, `"A"`, or `null`).
 4. **`notes`**: Additional details about the event.
 5. **`location`**: Address of the meeting place.

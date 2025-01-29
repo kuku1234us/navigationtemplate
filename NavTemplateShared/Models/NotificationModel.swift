@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import AudioToolbox
 
 @MainActor
 public class NotificationModel: ObservableObject {
@@ -7,6 +8,7 @@ public class NotificationModel: ObservableObject {
     private let defaults = UserDefaults(suiteName: "group.us.kothreat.NavTemplate")
     private let authStatusKey = "notificationAuthorizationStatus"
     private let notificationDelegate = NotificationDelegate()
+    private let notificationSoundName = "pending-notification"
     
     @Published public private(set) var isAuthorized = false
     
@@ -58,7 +60,10 @@ public class NotificationModel: ObservableObject {
             let content = UNMutableNotificationContent()
             content.title = event.eventTitle
             content.body = createReminderBody(event: event, minutesBefore: minutesBefore)
-            content.sound = .default
+            
+            // Set the custom notification sound
+            let soundName = UNNotificationSoundName(rawValue: "\(notificationSoundName).aiff")
+            content.sound = UNNotificationSound(named: soundName)
             
             let components = Calendar.current.dateComponents(
                 [.year, .month, .day, .hour, .minute, .second],
@@ -107,6 +112,23 @@ public class NotificationModel: ObservableObject {
             body += " at \(location)"
         }
         return body
+    }
+    
+    /// Test play the notification sound
+    public func playNotificationSound() {
+        // Look for sound file in NavTemplateShared bundle
+        if let soundURL = Bundle(for: NotificationModel.self).url(forResource: notificationSoundName, withExtension: "aiff") {
+            var soundID: SystemSoundID = 0
+            AudioServicesCreateSystemSoundID(soundURL as CFURL, &soundID)
+            AudioServicesPlaySystemSound(soundID)
+            
+            // Clean up after playing
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                AudioServicesDisposeSystemSoundID(soundID)
+            }
+        } else {
+            Logger.shared.error("[E028] Failed to find notification sound file in NavTemplateShared bundle")
+        }
     }
 }
 

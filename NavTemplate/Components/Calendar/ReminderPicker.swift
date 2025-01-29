@@ -1,12 +1,15 @@
 import SwiftUI
+import AudioToolbox
+import NavTemplateShared
 
 struct ReminderPickerDialog: View {
-    let onSave: (Int) -> Void  // Callback with total minutes
+    let onSave: (Int) -> Void  // Updated to include sound
     
     @State private var selectedWeeks: Int = 0
     @State private var selectedDays: Int = 0
     @State private var selectedHours: Int = 0
     @State private var selectedMinutes: Int = 0
+    @State private var selectedSound: String = "Game"  // Default sound
     
     private let weeksRange = Array(0...52)
     private let daysRange = Array(0...30)
@@ -23,36 +26,41 @@ struct ReminderPickerDialog: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
+                // Sound Picker
+                SoundPicker(selection: $selectedSound)
+                    .frame(height: 150)
+                    .clipped()
+                
                 // Weeks Picker
                 WeeksPicker(selection: $selectedWeeks)
-                    .frame(height: 150)
+                    .frame(width: 50, height: 150)
                     .clipped()
                 
                 // Days Picker
                 DaysPicker(selection: $selectedDays)
-                    .frame(height: 150)
+                    .frame(width: 50, height: 150)
                     .clipped()
                 
                 // Hours Picker
                 HoursPicker(selection: $selectedHours)
-                    .frame(height: 150)
+                    .frame(width: 50, height: 150)
                     .clipped()
                 
                 // Minutes Picker
                 MinutesPicker(selection: $selectedMinutes)
-                    .frame(height: 150)
+                    .frame(width: 50, height: 150)
                     .clipped()
             }
-            .offset(x: 25)
+            .offset(x: 0)
             .background {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(.ultraThinMaterial)
-                    .frame(height: 35)
+                    .frame(height: 30)
             }
             .padding()
             .cornerRadius(12)
             .shadow(radius: 10)
-            .frame(maxWidth: 350)
+            .frame(maxWidth: 430)  // Increased to accommodate sound picker
             
             // Save Button
             Button(action: {
@@ -95,7 +103,8 @@ private struct WeeksPicker: View {
         PickerViewWithoutIndicator(id: "Weeks", selection: $selection) {
             ForEach(weeksRange, id: \.self) { weeks in
                 Text("\(weeks)w")
-                    .frame(width: 50, alignment: .center)
+                    .font(.system(size: 14))
+                    .frame(width: 30, alignment: .center)
                     .tag(weeks)
             }
         }
@@ -110,7 +119,8 @@ private struct DaysPicker: View {
         PickerViewWithoutIndicator(id: "Days", selection: $selection) {
             ForEach(daysRange, id: \.self) { days in
                 Text("\(days)d")
-                    .frame(width: 50, alignment: .center)
+                    .font(.system(size: 14))
+                    .frame(width: 30, alignment: .center)
                     .tag(days)
             }
         }
@@ -125,7 +135,8 @@ private struct HoursPicker: View {
         PickerViewWithoutIndicator(id: "Hours", selection: $selection) {
             ForEach(hoursRange, id: \.self) { hours in
                 Text("\(hours)h")
-                    .frame(width: 50, alignment: .center)
+                    .font(.system(size: 14))
+                    .frame(width: 30, alignment: .center)
                     .tag(hours)
             }
         }
@@ -140,9 +151,53 @@ private struct MinutesPicker: View {
         PickerViewWithoutIndicator(id: "Minutes", selection: $selection) {
             ForEach(minutesRange, id: \.self) { minutes in
                 Text("\(minutes)m")
-                    .frame(width: 50, alignment: .center)
+                    .font(.system(size: 14))
+                    .frame(width: 30, alignment: .center)
                     .tag(minutes)
             }
+        }
+    }
+}
+
+private struct SoundPicker: View {
+    @Binding var selection: String
+    private let sounds = [
+        "Game",
+        "Flute",
+        "Keyboard",
+        "ChordWhistle",
+        "Reality",
+        "Elevator2",
+        "Harp",
+        "Elevator",
+        "Dingding"
+    ]
+    
+    // Add function to play selected sound
+    private func playSound(_ soundName: String) {
+        if let soundURL = Bundle(for: NotificationModel.self).url(forResource: soundName, withExtension: "aiff") {
+            var soundID: SystemSoundID = 0
+            AudioServicesCreateSystemSoundID(soundURL as CFURL, &soundID)
+            AudioServicesPlaySystemSound(soundID)
+            
+            // Clean up after playing
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                AudioServicesDisposeSystemSoundID(soundID)
+            }
+        }
+    }
+    
+    var body: some View {
+        PickerViewWithoutIndicator(id: "Sound", selection: $selection) {
+            ForEach(sounds, id: \.self) { sound in
+                Text(sound)
+                    .font(.system(size: 14))
+                    .frame(width: 80, alignment: .center)
+                    .tag(sound)
+            }
+        }
+        .onChange(of: selection) { oldValue, newValue in
+            playSound(newValue)  // Play sound when selection changes
         }
     }
 } 

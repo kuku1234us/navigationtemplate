@@ -198,7 +198,8 @@ struct EventEditor: View {
                 // Reminders List
                 ReminderListView(
                     selectedReminders: $selectedReminders,
-                    showReminderPicker: $showReminderPicker
+                    showReminderPicker: $showReminderPicker,
+                    selectedSound: "Game"
                 )
                 
                 // Location Input (conditionally shown)
@@ -280,7 +281,9 @@ struct EventEditor: View {
                                 Button {
                                     selectedReminders.insert(minutes)
                                 } label: {
-                                    Text(ReminderListView.formatReminderOption(minutes))
+                                    HStack {
+                                        Text(ReminderListView.formatReminderOption(minutes))
+                                    }
                                 }
                             }
                         }

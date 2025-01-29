@@ -101,6 +101,31 @@ public struct CalendarEvent: Codable, Equatable {
     }
 }
 
+public struct ReminderType: Codable, Hashable {
+    public let minutes: Int
+    public let sound: String
+    
+    public init(minutes: Int, sound: String = "Game") {
+        self.minutes = minutes
+        self.sound = sound
+    }
+    
+    // For backward compatibility - convert from Int to ReminderType
+    public static func from(_ minutes: Int) -> ReminderType {
+        ReminderType(minutes: minutes)
+    }
+    
+    // For comparison and Set operations
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(minutes)
+        hasher.combine(sound)
+    }
+    
+    public static func == (lhs: ReminderType, rhs: ReminderType) -> Bool {
+        return lhs.minutes == rhs.minutes && lhs.sound == rhs.sound
+    }
+}
+
 // MARK: - Calendar Model
 @MainActor
 public class CalendarModel: ObservableObject {

@@ -3,6 +3,7 @@ import SwiftUI
 struct ReminderListView: View {
     @Binding var selectedReminders: Set<Int>
     @Binding var showReminderPicker: Bool
+    var selectedSound: String
     
     // Make these static so they can be used by EventEditor
     static let reminderOptions = [

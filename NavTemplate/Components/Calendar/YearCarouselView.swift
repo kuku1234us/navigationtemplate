@@ -21,8 +21,6 @@ struct YearCarouselView: View {
     
     
     init(curDate: Binding<Date>, calendarType: Binding<CalendarType>, ghostYearPaneRect: CGRect) {
-        print("Init YearCarouselView currentDate: \(curDate.wrappedValue)")
-        
         self._curDate = curDate
         self._calendarType = calendarType
         self.ghostYearPaneRect = ghostYearPaneRect

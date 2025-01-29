@@ -172,6 +172,72 @@
 			);
 			target = 855F43D92D0CA0C400593B9A /* NavTemplateShared */;
 		};
+		85B69C3F2D4A8BA2004F2709 /* Exceptions for "NavTemplate" folder in "ActivitiesWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+			);
+			target = 855F43B72D0BFA7000593B9A /* ActivitiesWidgetExtension */;
+		};
+		85B69C402D4A8BA2004F2709 /* Exceptions for "NavTemplate" folder in "NavTemplateShared" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+			);
+			target = 855F43D92D0CA0C400593B9A /* NavTemplateShared */;
+		};
+		85B69C412D4A8BA2004F2709 /* Exceptions for "NavTemplate" folder in "TaskWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+			);
+			target = 851402122D2D51D500E7804F /* TaskWidgetExtension */;
+		};
+		85B69C8C2D4AA032004F2709 /* Exceptions for "NavTemplateShared" folder in "iOSWiz" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Audio/ChordWhistle.aiff,
+				Audio/Dingding.aiff,
+				Audio/Elevator.aiff,
+				Audio/Elevator2.aiff,
+				Audio/Flute.aiff,
+				Audio/Game.aiff,
+				Audio/Harp.aiff,
+				Audio/Keyboard.aiff,
+				Audio/Reality.aiff,
+			);
+			target = 855E4EA52CFC3B70002E12D4 /* iOSWiz */;
+		};
+		85B69C8D2D4AA032004F2709 /* Exceptions for "NavTemplateShared" folder in "ActivitiesWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Audio/ChordWhistle.aiff,
+				Audio/Dingding.aiff,
+				Audio/Elevator.aiff,
+				Audio/Elevator2.aiff,
+				Audio/Flute.aiff,
+				Audio/Game.aiff,
+				Audio/Harp.aiff,
+				Audio/Keyboard.aiff,
+				Audio/Reality.aiff,
+			);
+			target = 855F43B72D0BFA7000593B9A /* ActivitiesWidgetExtension */;
+		};
+		85B69C8E2D4AA032004F2709 /* Exceptions for "NavTemplateShared" folder in "TaskWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Audio/ChordWhistle.aiff,
+				Audio/Dingding.aiff,
+				Audio/Elevator.aiff,
+				Audio/Elevator2.aiff,
+				Audio/Flute.aiff,
+				Audio/Game.aiff,
+				Audio/Harp.aiff,
+				Audio/Keyboard.aiff,
+				Audio/Reality.aiff,
+			);
+			target = 851402122D2D51D500E7804F /* TaskWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -185,6 +251,11 @@
 		};
 		855E4EA82CFC3B70002E12D4 /* NavTemplate */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				85B69C3F2D4A8BA2004F2709 /* Exceptions for "NavTemplate" folder in "ActivitiesWidgetExtension" target */,
+				85B69C402D4A8BA2004F2709 /* Exceptions for "NavTemplate" folder in "NavTemplateShared" target */,
+				85B69C412D4A8BA2004F2709 /* Exceptions for "NavTemplate" folder in "TaskWidgetExtension" target */,
+			);
 			path = NavTemplate;
 			sourceTree = "<group>";
 		};
@@ -209,7 +280,10 @@
 		855F43DB2D0CA0C400593B9A /* NavTemplateShared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				85B69C8C2D4AA032004F2709 /* Exceptions for "NavTemplateShared" folder in "iOSWiz" target */,
+				85B69C8D2D4AA032004F2709 /* Exceptions for "NavTemplateShared" folder in "ActivitiesWidgetExtension" target */,
 				855F43F12D0CA0C700593B9A /* Exceptions for "NavTemplateShared" folder in "NavTemplateShared" target */,
+				85B69C8E2D4AA032004F2709 /* Exceptions for "NavTemplateShared" folder in "TaskWidgetExtension" target */,
 			);
 			path = NavTemplateShared;
 			sourceTree = "<group>";
