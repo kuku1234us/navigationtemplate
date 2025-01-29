@@ -125,7 +125,6 @@ struct CalendarPage: Page {
                 Image("batmanDim")
                     .resizable()
                     .ignoresSafeArea()
-                    .overlay(.black.opacity(0.5))
 
                 GhostMonthPage(
                     curDate: $curDate,

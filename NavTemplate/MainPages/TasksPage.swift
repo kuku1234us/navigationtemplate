@@ -60,7 +60,6 @@ struct TasksPage: Page {
                 Image("batmanDim")
                     .resizable()
                     .ignoresSafeArea()
-                    .overlay(.black.opacity(0.5))
                 
                 VStack(spacing: 0) {
                     // Header with search

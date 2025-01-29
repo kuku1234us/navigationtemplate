@@ -5,7 +5,9 @@ struct ReminderBadge: View {
     let onRemove: () -> Void
     
     private var displayText: String {
-        if minutes >= 1440 { // 24 hours
+        if minutes == 0 {
+            return "@"
+        } else if minutes >= 1440 { // 24 hours
             let days = minutes / 1440
             return "\(days)d"
         } else if minutes >= 60 {

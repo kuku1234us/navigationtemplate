@@ -5,6 +5,7 @@ struct ReminderListView: View {
     
     // Make these static so they can be used by EventEditor
     static let reminderOptions = [
+        0,      // At time of event
         5,      // 5 minutes
         15,     // 15 minutes
         30,     // 30 minutes
@@ -16,7 +17,9 @@ struct ReminderListView: View {
     ]
     
     static func formatReminderOption(_ minutes: Int) -> String {
-        if minutes >= 1440 { // 24 hours
+        if minutes == 0 {
+            return "@Event"
+        } else if minutes >= 1440 { // 24 hours
             let days = minutes / 1440
             return "\(days) day\(days > 1 ? "s" : "") before"
         } else if minutes >= 60 {

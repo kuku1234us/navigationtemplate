@@ -175,7 +175,6 @@ struct ActivitiesPage: Page {
                     .resizable()
                     .ignoresSafeArea()
                     .animation(.easeInOut, value: consciousState)
-                    .overlay(.black.opacity(0.8))
 
                 if isLoading {
                     ProgressView()

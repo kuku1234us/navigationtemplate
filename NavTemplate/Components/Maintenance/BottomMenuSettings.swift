@@ -12,7 +12,7 @@ struct BottomMenuSettings: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Bottom Menu Settings")
+            Text("Bottom Menu Ordering")
                 .font(.title2)
                 .foregroundColor(Color("PageTitle"))
                 .padding(.horizontal)

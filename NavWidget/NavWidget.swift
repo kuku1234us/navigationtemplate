@@ -233,7 +233,6 @@ struct NavWidgetEntryView : View {
                 Image(entry.consciousState == .sleep ? "wNiteBackground" : "wDayBackground")
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .overlay(.black.opacity(0.7))
             } else {
                 AccessoryWidgetBackground()
             }
