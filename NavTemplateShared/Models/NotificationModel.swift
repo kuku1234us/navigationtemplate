@@ -51,18 +51,18 @@ public class NotificationModel: ObservableObject {
         await removeEventReminders(for: event.eventId)
         
         // Create new notifications for each reminder time
-        for minutesBefore in event.reminders {
+        for reminder in event.reminders {
             let triggerDate = Date(timeIntervalSince1970: TimeInterval(event.startTime))
-                .addingTimeInterval(TimeInterval(-minutesBefore * 60))
+                .addingTimeInterval(TimeInterval(-reminder.minutes * 60))
             
             guard triggerDate > Date() else { continue }
             
             let content = UNMutableNotificationContent()
             content.title = event.eventTitle
-            content.body = createReminderBody(event: event, minutesBefore: minutesBefore)
+            content.body = createReminderBody(event: event, minutesBefore: reminder.minutes)
             
-            // Set the custom notification sound
-            let soundName = UNNotificationSoundName(rawValue: "\(notificationSoundName).aiff")
+            // Set the custom notification sound with the reminder's sound
+            let soundName = UNNotificationSoundName(rawValue: "\(reminder.sound).aiff")
             content.sound = UNNotificationSound(named: soundName)
             
             let components = Calendar.current.dateComponents(
@@ -71,7 +71,7 @@ public class NotificationModel: ObservableObject {
             )
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
             
-            let identifier = notificationIdentifier(eventId: event.eventId, minutesBefore: minutesBefore)
+            let identifier = notificationIdentifier(eventId: event.eventId, minutesBefore: reminder.minutes)
             let request = UNNotificationRequest(
                 identifier: identifier,
                 content: content,
@@ -106,10 +106,11 @@ public class NotificationModel: ObservableObject {
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "h:mm a"
         let startTime = timeFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(event.startTime)))
+        let endTime = timeFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(event.endTime)))
         
-        var body = "Starts at \(startTime)"
+        var body = "○ \(startTime) ~ \(endTime)"
         if let location = event.location {
-            body += " at \(location)"
+            body += "\n○ \(location)"
         }
         return body
     }

@@ -56,7 +56,7 @@ struct CalendarPage: Page {
     @State private var addButtonOpacity: Double = 1
 
     @State private var showReminderPicker = false
-    @State private var activeReminderCallback: ((Int) -> Void)?
+    @State private var activeReminderCallback: ((ReminderType) -> Void)?
 
     func computeTargetYearPaneRect() -> CGRect {
         let curMonthIndex = Calendar.current.component(.month, from: curDate) - 1
@@ -320,6 +320,7 @@ struct CalendarPage: Page {
                 }
 
                 // Add Event Editor Bottom Sheet
+                // <><><>
                 if showEventEditor {
                     BottomSheet(isPresented: $showEventEditor) {
                         EventEditor(
@@ -356,10 +357,13 @@ struct CalendarPage: Page {
                             showReminderPicker = false
                         }
                     
-                    ReminderPickerDialog { minutes in
-                        activeReminderCallback?(minutes)
-                        showReminderPicker = false
-                    }
+                    ReminderPicker(
+                        onSave: { reminder in
+                            activeReminderCallback?(reminder)
+                            showReminderPicker = false
+                        },
+                        isPresented: $showReminderPicker
+                    )
                     .transition(.scale)
                 }
             }

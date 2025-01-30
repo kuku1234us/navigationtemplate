@@ -1,10 +1,13 @@
 import SwiftUI
+import NavTemplateShared
 
 struct ReminderBadge: View {
-    let minutes: Int
+    let reminder: ReminderType
     let onRemove: () -> Void
     
     private var displayText: String {
+        let minutes = reminder.minutes
+        
         if minutes == 0 {
             return "@"
         }

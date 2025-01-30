@@ -2,14 +2,15 @@ import SwiftUI
 import AudioToolbox
 import NavTemplateShared
 
-struct ReminderPickerDialog: View {
-    let onSave: (Int) -> Void  // Updated to include sound
+struct ReminderPicker: View {
+    let onSave: (ReminderType) -> Void
+    @Binding var isPresented: Bool  // Add binding to control dismissal
     
     @State private var selectedWeeks: Int = 0
     @State private var selectedDays: Int = 0
     @State private var selectedHours: Int = 0
     @State private var selectedMinutes: Int = 0
-    @State private var selectedSound: String = "Game"  // Default sound
+    @State private var selectedSound: String = DefaultNotificationSound
     
     private let weeksRange = Array(0...52)
     private let daysRange = Array(0...30)
@@ -21,6 +22,20 @@ struct ReminderPickerDialog: View {
         let dayMinutes = selectedDays * 24 * 60
         let hourMinutes = selectedHours * 60
         return weekMinutes + dayMinutes + hourMinutes + selectedMinutes
+    }
+    
+    // Add function to play selected sound
+    private func playSound() {
+        if let soundURL = Bundle(for: NotificationModel.self).url(forResource: selectedSound, withExtension: "aiff") {
+            var soundID: SystemSoundID = 0
+            AudioServicesCreateSystemSoundID(soundURL as CFURL, &soundID)
+            AudioServicesPlaySystemSound(soundID)
+            
+            // Clean up after playing
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                AudioServicesDisposeSystemSoundID(soundID)
+            }
+        }
     }
     
     var body: some View {
@@ -62,36 +77,94 @@ struct ReminderPickerDialog: View {
             .shadow(radius: 10)
             .frame(maxWidth: 430)  // Increased to accommodate sound picker
             
-            // Save Button
-            Button(action: {
-                onSave(calculateTotalMinutes())
-            }) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color("ButtonBg").opacity(0.25))
-                        .frame(maxWidth: 300)
-                        .frame(height: 44)
-                        .backgroundBlur(radius: 10, opaque: true)
-                        .innerShadow(
-                            shape: RoundedRectangle(cornerRadius: 12),
-                            color: Color.bottomSheetBorderMiddle,
-                            lineWidth: 1,
-                            offsetX: 0,
-                            offsetY: 1,
-                            blur: 0,
-                            blendMode: .overlay,
-                            opacity: 1
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(Color("Accent"))
+            // Three Button Row
+            HStack(spacing: 20) {
+                // Play Sound Button
+                Button(action: playSound) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color("ButtonBg").opacity(0.25))
+                            .frame(width: 44, height: 44)
+                            .backgroundBlur(radius: 10, opaque: true)
+                            .innerShadow(
+                                shape: RoundedRectangle(cornerRadius: 12),
+                                color: Color.bottomSheetBorderMiddle,
+                                lineWidth: 1,
+                                offsetX: 0,
+                                offsetY: 1,
+                                blur: 0,
+                                blendMode: .overlay,
+                                opacity: 1
+                            )
+                        
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color("Accent"))
+                    }
+                }
+                
+                // Save Button
+                Button(action: {
+                    let reminder = ReminderType(minutes: calculateTotalMinutes(), sound: selectedSound)
+                    onSave(reminder)
+                }) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color("ButtonBg").opacity(0.25))
+                            .frame(width: 44, height: 44)
+                            .backgroundBlur(radius: 10, opaque: true)
+                            .innerShadow(
+                                shape: RoundedRectangle(cornerRadius: 12),
+                                color: Color.bottomSheetBorderMiddle,
+                                lineWidth: 1,
+                                offsetX: 0,
+                                offsetY: 1,
+                                blur: 0,
+                                blendMode: .overlay,
+                                opacity: 1
+                            )
+                        
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color("Accent"))
+                    }
+                }
+                
+                // Cancel Button
+                Button(action: { isPresented = false }) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color("ButtonBg").opacity(0.25))
+                            .frame(width: 44, height: 44)
+                            .backgroundBlur(radius: 10, opaque: true)
+                            .innerShadow(
+                                shape: RoundedRectangle(cornerRadius: 12),
+                                color: Color.bottomSheetBorderMiddle,
+                                lineWidth: 1,
+                                offsetX: 0,
+                                offsetY: 1,
+                                blur: 0,
+                                blendMode: .overlay,
+                                opacity: 1
+                            )
+                        
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color("MyTertiary"))
+                    }
                 }
             }
             .padding(.bottom)
         }
         .withTransparentCardStyle()
+        .onAppear {
+            // Reset all values when picker appears
+            selectedWeeks = 0
+            selectedDays = 0
+            selectedHours = 0
+            selectedMinutes = 0
+            selectedSound = DefaultNotificationSound
+        }
     }
 }
 
@@ -167,25 +240,11 @@ private struct SoundPicker: View {
         "Keyboard",
         "ChordWhistle",
         "Reality",
-        "Elevator2",
+        "Elevator3",
         "Harp",
         "Elevator",
         "Dingding"
     ]
-    
-    // Add function to play selected sound
-    private func playSound(_ soundName: String) {
-        if let soundURL = Bundle(for: NotificationModel.self).url(forResource: soundName, withExtension: "aiff") {
-            var soundID: SystemSoundID = 0
-            AudioServicesCreateSystemSoundID(soundURL as CFURL, &soundID)
-            AudioServicesPlaySystemSound(soundID)
-            
-            // Clean up after playing
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                AudioServicesDisposeSystemSoundID(soundID)
-            }
-        }
-    }
     
     var body: some View {
         PickerViewWithoutIndicator(id: "Sound", selection: $selection) {
@@ -195,9 +254,6 @@ private struct SoundPicker: View {
                     .frame(width: 80, alignment: .center)
                     .tag(sound)
             }
-        }
-        .onChange(of: selection) { oldValue, newValue in
-            playSound(newValue)  // Play sound when selection changes
         }
     }
 } 

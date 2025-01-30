@@ -7,7 +7,7 @@ struct EventEditor: View {
     let defaultDate: Date  // Add defaultDate parameter
     @Binding var isPresented: Bool
     @Binding var showReminderPicker: Bool  // Change to Binding
-    let reminderPickerCallback: (@escaping (Int) -> Void) -> Void  // Add @escaping here
+    let reminderPickerCallback: (@escaping (ReminderType) -> Void) -> Void  // Update type
     let onSave: () -> Void
     
     // State for event properties
@@ -20,7 +20,8 @@ struct EventEditor: View {
     @State private var selectedRecurrence: String?
     @State private var startDate = Date()
     @State private var endDate = Date().addingTimeInterval(3600) // 1 hour later
-    @State private var selectedReminders: Set<Int> = []
+    @State private var selectedReminders: Set<ReminderType> = []
+    @State private var selectedSound: String = DefaultNotificationSound
     
     @StateObject private var projectModel = ProjectModel.shared
     @StateObject private var calendarModel = CalendarModel.shared
@@ -40,7 +41,7 @@ struct EventEditor: View {
         defaultDate: Date = Date(),
         isPresented: Binding<Bool>,
         showReminderPicker: Binding<Bool>,
-        reminderPickerCallback: @escaping (@escaping (Int) -> Void) -> Void,  // Add @escaping here too
+        reminderPickerCallback: @escaping (@escaping (ReminderType) -> Void) -> Void,  // Add @escaping here too
         onSave: @escaping () -> Void
     ) {
         self.existingEvent = event
@@ -138,7 +139,7 @@ struct EventEditor: View {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 isPresented = false
             } catch {
-                print("Failed to save event: \(error)")
+                Logger.shared.error("[E024] EventEditor: Failed to save event: \(error)")
             }
         }
     }
@@ -198,8 +199,7 @@ struct EventEditor: View {
                 // Reminders List
                 ReminderListView(
                     selectedReminders: $selectedReminders,
-                    showReminderPicker: $showReminderPicker,
-                    selectedSound: "Game"
+                    showReminderPicker: $showReminderPicker
                 )
                 
                 // Location Input (conditionally shown)
@@ -276,21 +276,21 @@ struct EventEditor: View {
                     
                     // Reminder Menu
                     Menu {
-                        ForEach(ReminderListView.reminderOptions, id: \.self) { minutes in
-                            if !selectedReminders.contains(minutes) {
+                        ForEach(ReminderListView.reminderOptions, id: \.minutes) { reminderOption in
+                            if !selectedReminders.contains(reminderOption) {
                                 Button {
-                                    selectedReminders.insert(minutes)
+                                    selectedReminders.insert(reminderOption)
                                 } label: {
                                     HStack {
-                                        Text(ReminderListView.formatReminderOption(minutes))
+                                        Text(ReminderListView.formatReminderOption(reminderOption))
                                     }
                                 }
                             }
                         }
                         
                         Button {
-                            reminderPickerCallback { minutes in
-                                selectedReminders.insert(minutes)
+                            reminderPickerCallback { reminder in
+                                selectedReminders.insert(reminder)
                             }
                             showReminderPicker = true
                         } label: {

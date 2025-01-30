@@ -55,7 +55,7 @@ public struct CalendarEvent: Codable, Equatable {
     public let startTime: Int  // Unix timestamp in seconds
     public let endTime: Int    // Unix timestamp in seconds
     public let projId: Int64?
-    public let reminders: [Int]  // Minutes before event
+    public let reminders: [ReminderType]  // Changed from [Int]
     public let recurrence: String?  // D, W, M, or null
     public let notes: String?
     public let location: String?  // Address of meeting place
@@ -80,12 +80,12 @@ public struct CalendarEvent: Codable, Equatable {
         eventTitle: String,
         startTime: Int,
         endTime: Int,
-        projId: Int64? = nil,
-        reminders: [Int] = [],
-        recurrence: String? = nil,
-        notes: String? = nil,
-        location: String? = nil,
-        url: String? = nil,
+        projId: Int64?,
+        reminders: [ReminderType],  // Changed parameter type
+        recurrence: String?,
+        notes: String?,
+        location: String?,
+        url: String?,
         eventId: Int64
     ) {
         self.eventTitle = eventTitle
@@ -101,18 +101,20 @@ public struct CalendarEvent: Codable, Equatable {
     }
 }
 
+public let DefaultNotificationSound = "Elevator"
+
 public struct ReminderType: Codable, Hashable {
     public let minutes: Int
     public let sound: String
     
-    public init(minutes: Int, sound: String = "Game") {
+    public init(minutes: Int, sound: String = DefaultNotificationSound) {
         self.minutes = minutes
         self.sound = sound
     }
     
     // For backward compatibility - convert from Int to ReminderType
     public static func from(_ minutes: Int) -> ReminderType {
-        ReminderType(minutes: minutes)
+        ReminderType(minutes: minutes)  // Will use DefaultNotificationSound
     }
     
     // For comparison and Set operations
