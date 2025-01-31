@@ -126,6 +126,11 @@ public struct ReminderType: Codable, Hashable {
     public static func == (lhs: ReminderType, rhs: ReminderType) -> Bool {
         return lhs.minutes == rhs.minutes && lhs.sound == rhs.sound
     }
+    
+    // Compare only the time components, ignoring sound
+    public func hasSameTime(as other: ReminderType) -> Bool {
+        return self.minutes == other.minutes
+    }
 }
 
 // MARK: - Calendar Model

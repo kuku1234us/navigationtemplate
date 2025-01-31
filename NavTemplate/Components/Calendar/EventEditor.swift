@@ -161,6 +161,17 @@ struct EventEditor: View {
         }
     }
     
+    private func addReminder(_ reminder: ReminderType) {
+        // First check if we already have a reminder with the same time
+        if let existingIndex = selectedReminders.firstIndex(where: { $0.hasSameTime(as: reminder) }) {
+            // Remove the existing reminder with same time
+            selectedReminders.remove(at: existingIndex)
+        }
+        
+        // Add the new reminder (possibly with different sound)
+        selectedReminders.insert(reminder)
+    }
+    
     var body: some View {
         VStack(spacing: 5) {
             // Title
@@ -276,13 +287,18 @@ struct EventEditor: View {
                     
                     // Reminder Menu
                     Menu {
-                        ForEach(ReminderListView.reminderOptions, id: \.minutes) { reminderOption in
-                            if !selectedReminders.contains(reminderOption) {
+                        ForEach(ReminderListView.reminderOptions, id: \.self) { minutes in
+                            // Check if we already have a reminder at this time
+                            if !selectedReminders.contains(where: { $0.minutes == minutes }) {
                                 Button {
-                                    selectedReminders.insert(reminderOption)
+                                    let reminder = ReminderType(
+                                        minutes: minutes, 
+                                        sound: DefaultNotificationSound
+                                    )
+                                    addReminder(reminder)
                                 } label: {
                                     HStack {
-                                        Text(ReminderListView.formatReminderOption(reminderOption))
+                                        Text(ReminderListView.formatReminderOption(minutes))
                                     }
                                 }
                             }
@@ -290,7 +306,7 @@ struct EventEditor: View {
                         
                         Button {
                             reminderPickerCallback { reminder in
-                                selectedReminders.insert(reminder)
+                                addReminder(reminder)
                             }
                             showReminderPicker = true
                         } label: {

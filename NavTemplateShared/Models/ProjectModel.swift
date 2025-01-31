@@ -270,12 +270,20 @@ public class ProjectModel: ObservableObject {
             }
             
             // If ProjectsSummary.md loading fails, reconcile projects
-            await reconcileProjects()
+            do {
+                try await reconcileProjects()  // Add try await here
+            } catch {
+                Logger.shared.error("[E033] Failed to reconcile projects", error: error)
+            }
             
         } catch {
             Logger.shared.error("[E031] Failed to load projects from summary", error: error)
             // If loading from summary fails, reconcile projects
-            await reconcileProjects()
+            do {
+                try await reconcileProjects()  // Add try await here
+            } catch {
+                Logger.shared.error("[E033] Failed to reconcile projects", error: error)
+            }
         }
     }
     
@@ -475,58 +483,74 @@ public class ProjectModel: ObservableObject {
         }
     }
     
-    public func reconcileProjects() {
+    public func reconcileProjects() async throws {
         do {
+            // Do file operations in background
             let markdownFiles = try ProjectFileManager.shared.findAllMarkdownFiles()
             var projectMetadata: [ProjectMetadata] = []
             var allTasks: [TaskItem] = []
             
-            // Load all project files
-            for fileURL in markdownFiles {
-                if let (content, projId) = try ProjectFileManager.shared.readProjectFile(fileURL) {
-                    // Parse project metadata from the content we already have
-                    if let metadata = try parseProjectMetadata(from: fileURL, content: content) {
-                        projectMetadata.append(metadata)
-                    
-                        // Parse tasks from the same content
-                        if let tasks = ProjectFileManager.shared.parseTasksFromContent(
-                            content,
-                            projId: projId
-                        ) {
-                            allTasks.append(contentsOf: tasks)
+            // Process files concurrently
+            try await withThrowingTaskGroup(of: (ProjectMetadata?, [TaskItem]?).self) { group in
+                for fileURL in markdownFiles {
+                    group.addTask {
+                        guard let (content, projId) = try ProjectFileManager.shared.readProjectFile(fileURL) else {
+                            return (nil, nil)
                         }
+                        
+                        // Add try to throwing call
+                        let metadata = try self.parseProjectMetadata(from: fileURL, content: content)
+                        let tasks = ProjectFileManager.shared.parseTasksFromContent(content, projId: projId)
+                        
+                        return (metadata, tasks)
+                    }
+                }
+                
+                // Collect results
+                for try await (metadata, tasks) in group {
+                    if let metadata = metadata {
+                        projectMetadata.append(metadata)
+                    }
+                    if let tasks = tasks {
+                        allTasks.append(contentsOf: tasks)
                     }
                 }
             }
             
-            // Get set of all current project IDs
-            let currentProjectIds = Set(projectMetadata.map { $0.projId })
+            // Switch to main thread for model updates
+            await MainActor.run {
+                // Update the projects array first
+                self.projects = projectMetadata
+                
+                // Get set of all current project IDs
+                let currentProjectIds = Set(projectMetadata.map { $0.projId })
+                
+                // Update project settings
+                var selectedProjects = settings.selectedProjects
+                selectedProjects.formIntersection(currentProjectIds)
+                
+                var projectOrder = settings.projectOrder.filter { currentProjectIds.contains($0) }
+                let newProjects = currentProjectIds.subtracting(Set(projectOrder))
+                projectOrder.append(contentsOf: newProjects)
+                
+                // Update settings and notify observers
+                updateProjectSettings(
+                    selectedProjects: selectedProjects,
+                    projectOrder: projectOrder
+                )
+                
+                // Clean up unused icons
+                let usedIcons = Set(projectMetadata.compactMap { $0.icon })
+                ImageCache.shared.removeUnusedImages(folder: "icons", currentlyUsedFilenames: usedIcons)
+                
+                // Update tasks
+                TaskModel.shared.updateAllTasks(allTasks)
+                
+                // Notify observers
+                self.objectWillChange.send()
+            }
             
-            // Update project settings
-            var selectedProjects = settings.selectedProjects
-            selectedProjects.formIntersection(currentProjectIds)  // Remove any non-existent projects
-            
-            // Update project order, removing any non-existent projects
-            var projectOrder = settings.projectOrder.filter { currentProjectIds.contains($0) }
-            
-            // Add any new projects to the order
-            let newProjects = currentProjectIds.subtracting(Set(projectOrder))
-            projectOrder.append(contentsOf: newProjects)
-            
-            // Update settings
-            updateProjectSettings(
-                selectedProjects: selectedProjects,
-                projectOrder: projectOrder
-            )
-            
-            // Clean up unused icons using ImageCache
-            let usedIcons = Set(projectMetadata.compactMap { $0.icon })
-            ImageCache.shared.removeUnusedImages(folder: "icons", currentlyUsedFilenames: usedIcons)
-            
-            // Update tasks in TaskModel
-            TaskModel.shared.updateAllTasks(allTasks)
-            
-            // Write ProjectsSummary.md
+            // Write summary file in background
             let summaryURL = try getProjectsSummaryURL()
             let jsonData = try JSONSerialization.data(
                 withJSONObject: projectMetadata.map { self.extractMetadata(from: $0) },
@@ -534,10 +558,9 @@ public class ProjectModel: ObservableObject {
             )
             try jsonData.write(to: summaryURL, options: .atomic)
             
-            print("ProjectsSummary.md updated successfully.")
         } catch {
             Logger.shared.error("[E032] Failed to reconcile projects", error: error)
-            print("Error during project reconciliation: \(error)")
+            throw error
         }
     }
     

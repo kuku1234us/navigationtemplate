@@ -8,26 +8,41 @@ struct ReconcileButton: View {
     @State private var showReconcileError = false
     @State private var errorMessage = ""
     @State private var successValue = 0
+    @State private var rotationValue = 0
     
     var body: some View {
         Button(action: {
             Task {
+                // Start rotation
                 isReconciling = true
+                rotationValue += 1
+                
                 do {
-                    await projectModel.reconcileProjects()
-                    showReconcileSuccess = true
-                    successValue = successValue + 1
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    try await projectModel.reconcileProjects()
+                    
+                    // Success animation
+                    await MainActor.run {
+                        showReconcileSuccess = true
+                        successValue += 1
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
                     
                     // Reset success state after delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    await MainActor.run {
                         showReconcileSuccess = false
                     }
                 } catch {
-                    errorMessage = error.localizedDescription
-                    showReconcileError = true
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        showReconcileError = true
+                    }
                 }
-                isReconciling = false
+                
+                // Stop rotation
+                await MainActor.run {
+                    isReconciling = false
+                }
             }
         }) {
             Image(systemName: "arrow.triangle.2.circlepath")
@@ -40,8 +55,8 @@ struct ReconcileButton: View {
                 )
                 .symbolEffect(
                     .rotate,
-                    options: .speed(1),
-                    value: successValue
+                    options: .repeating.speed(1),
+                    value: rotationValue
                 )
         }
         .disabled(isReconciling)

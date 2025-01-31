@@ -169,18 +169,6 @@ extension UIApplication {
 
 // MARK: - Geometry Utilities
 
-/// A utility function to compute the transformation values (offsetX, offsetY, scaleX) between two CGRects.
-public func computeTransform(from rect1: CGRect, to rect2: CGRect) -> (offsetX: CGFloat, offsetY: CGFloat, scaleX: CGFloat) {
-    // Compute the scale factor (based on widths of rect1 and rect2)
-    let scaleX = rect2.width / rect1.width
-    
-    // Compute the X and Y offsets
-    let offsetX = rect2.midX - rect1.midX
-    let offsetY = rect2.midY - rect1.midY
-    
-    return (offsetX, offsetY, scaleX)
-}
-
 /// Computes the X scale factor between two CGRects based on their widths.
 public func computeScaleX(from rect1: CGRect, to rect2: CGRect) -> CGFloat {
     if rect1.width == 0 {
