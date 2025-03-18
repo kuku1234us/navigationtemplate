@@ -224,61 +224,6 @@ struct YearPage: Page {
                     Spacer()
                 }
 
-                // Rectangle()
-                //     .stroke(Color.red, lineWidth: 1)
-                //     .frame(
-                //         width: miniMonthRect.width,
-                //         height: miniMonthRect.height
-                //     )
-                //     .offset(
-                //         x: miniMonthRect.minX,
-                //         y: miniMonthRect.minY
-                //     )
-
-                // Rectangle()
-                //     .stroke(Color.blue, lineWidth: 1)
-                //     .frame(
-                //         width: ghostMonthRect.width,
-                //         height: ghostMonthRect.height
-                //     )
-                //     .offset(
-                //         x: ghostMonthRect.minX,
-                //         y: ghostMonthRect.minY
-                //     )
-
-                // Rectangle()
-                //     .stroke(Color.green, lineWidth: 1)
-                //     .frame(
-                //         width: ghostYearPaneRect.width,
-                //         height: ghostYearPaneRect.height
-                //     )
-                //     .offset(
-                //         x: ghostYearPaneRect.minX,
-                //         y: ghostYearPaneRect.minY
-                //     )
-                //     .opacity(0.5)
-                
-                // Toggle button overlay
-                // VStack {
-                //     Spacer()
-                //     Button(action: {
-                //         withAnimation(.easeInOut(duration: 0.3)) {
-                //             calendarType = calendarType == .month ? .year : .month
-                //         }
-                //     }) {
-                //         Text(calendarType == .month ? "Month" : "Year")
-                //             .font(.system(size: 24))
-                //             .foregroundColor(Color("PageTitle"))
-                //             .frame(width: 60, height: 60)
-                //             .background(Color("SideSheetBg").opacity(0.8))
-                //             .shadow(radius: 10)
-                //     }
-                //     .padding(.bottom, 120)
-                // }
-
-                // Add BoxOutline on top of everything
-                // BoxOutline(miniMonthRects: ghostMiniMonthRects)
-                //     .allowsHitTesting(false)  // Let touches pass through
             }
         )
     }
