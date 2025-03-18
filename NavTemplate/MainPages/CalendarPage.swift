@@ -169,6 +169,7 @@ struct CalendarPage: Page {
                     .contentShape(Rectangle())
                     .allowsHitTesting(true)
 
+                // Actual Year Carousel View
                 VStack(spacing: 0) {
                     GhostYearHeader()
                         .opacity(0)
@@ -230,7 +231,7 @@ struct CalendarPage: Page {
                     Spacer()
                 }
 
-                // Month Carousel View
+                // ActualMonth Carousel View
                 VStack(spacing: 0) {
                     GhostMonthHeader(
                         curDate: curDate,

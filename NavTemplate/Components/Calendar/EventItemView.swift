@@ -109,13 +109,19 @@ public struct EventItemView: View, Equatable {
                 }
                 
                 if let url = event.url {
-                    HStack {
-                        Image(systemName: "video.circle.fill")
-                            .foregroundColor(Color("MyTertiary"))
-                        Text(url)
-                            .font(.caption)
-                            .foregroundColor(Color("MyTertiary"))
+                    Button {
+                        guard let url = URL(string: url) else { return }
+                        UIApplication.shared.open(url)
+                    } label: {
+                        HStack {
+                            Image(systemName: "video.circle.fill")
+                                .foregroundColor(Color("MyTertiary"))
+                            Text(url)
+                                .font(.caption)
+                                .foregroundColor(Color("MyTertiary"))
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.leading, 10)
